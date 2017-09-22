@@ -11,6 +11,8 @@ uint8_t initial_stack[INITIAL_STACK_SIZE]__attribute__((aligned(16)));
 uint32_t* loader_stack;
 extern char kernmem, physbase;
 
+void checkAllBuses(void);
+
 void _x86_64_asm_pit_100ms();
 
 void start(uint32_t *modulep, void *physbase, void *physfree)
@@ -19,6 +21,7 @@ void start(uint32_t *modulep, void *physbase, void *physfree)
     uint64_t base, length;
     uint32_t type;
   }__attribute__((packed)) *smap;
+  //checkAllBuses();
   while(modulep[0] != 0x9001) modulep += modulep[1]+2;
   for(smap = (struct smap_t*)(modulep+2); smap < (struct smap_t*)((char*)modulep+modulep[1]+2*4); ++smap) {
     if (smap->type == 1 /* memory */ && smap->length != 0) {
@@ -27,6 +30,7 @@ void start(uint32_t *modulep, void *physbase, void *physfree)
   }
   kprintf("physfree %p\n", (uint64_t)physfree);
   kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
+  checkAllBuses();
   /*init_pic();
   //_x86_64_asm_pit_100ms();
   init_idt();

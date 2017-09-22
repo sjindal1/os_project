@@ -8,11 +8,11 @@ void displayBuff();
 void buffCopy();
 
 int x_pos=0, y_pos=0;
-#define ymax 10
+#define ymax 20
 #define xmax 80
 char buf[ymax][xmax];
-char final_str[1000];
-char str[1000];
+char final_str[2000];
+char str[2000];
 
 void buffCopy(){
     for(int i=0;i<ymax-1;i++){
@@ -29,9 +29,9 @@ void buffCopy(){
 
 void displayBuff(){
     register char *temp1, *temp2;
-    for(temp2 = (char*)0xb8001; temp2 < (char*)0xb8000+160*10; temp2 += 2) *temp2 = 7 /* white */;
+    for(temp2 = (char*)0xb8001; temp2 < (char*)0xb8000+160*ymax; temp2 += 2) *temp2 = 7 /* white */;
     temp1 = &buf[0][0];
-    for(temp2 = (char*)0xb8000; temp2 < (char*)0xb8000+160*10; temp1 += 1, temp2 += 2) *temp2 = *temp1;
+    for(temp2 = (char*)0xb8000; temp2 < (char*)0xb8000+160*ymax; temp1 += 1, temp2 += 2) *temp2 = *temp1;
 }
 
 
@@ -160,6 +160,14 @@ char *getStrFromInt(char *str, int arg_val, int code_type){
         str[i++] = '-';
     }
     int rem=arg_val%code_type;
+
+    if(arg_val == 0)		// handle special condition
+    {
+      str[i++] = '0';
+      str[i] = '\0';
+      return str;
+    }
+
     while(arg_val != 0){
         if(rem < 10)
             str[i] = rem+48;
@@ -196,6 +204,14 @@ char *getStrFromUnsignlong(char *str, unsigned long arg_val, int code_type) {
     int i = 0, j;
     char t;
     int rem = arg_val % code_type;
+        
+    if(arg_val == 0)            // handle special condition
+    {
+      str[i++] = '0';
+      str[i] = '\0';
+      return str;
+    }
+
     while(arg_val != 0)
     {
         if(rem < 10)
