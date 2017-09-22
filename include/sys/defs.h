@@ -2,6 +2,9 @@
 #define _DEFS_H
 
 #define NULL ((void*)0)
+#define O_RDONLY	0x0000
+#define O_WRONLY	0x0001
+#define O_RDWR		0x0002
 
 typedef unsigned long  uint64_t;
 typedef          long   int64_t;
@@ -18,5 +21,7 @@ typedef int64_t ssize_t;
 typedef uint64_t off_t;
 
 typedef uint32_t pid_t;
+
+typedef uint16_t mode_t;
 
 #endif
