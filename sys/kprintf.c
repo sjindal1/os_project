@@ -11,8 +11,8 @@ int x_pos=0, y_pos=0;
 #define ymax 20
 #define xmax 80
 char buf[ymax][xmax];
-char final_str[2000];
-char str[2000];
+char final_str[1000];
+char str[1000];
 
 void buffCopy(){
     for(int i=0;i<ymax-1;i++){
