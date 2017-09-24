@@ -54,7 +54,7 @@ uint16_t pciConfigReadWord (uint8_t bus, uint8_t slot,
    sysOutLong (0xCF8, address);
    /* read in the data */
    /* (offset & 2) * 8) = 0 will choose the first word of the 32 bits register */
-   tmp = (uint16_t)((sysInLong (0xCFC) >> ((offset & 2) * 8)) & 0xffff);
+      tmp = (uint16_t)((sysInLong (0xCFC) >> ((offset & 2) * 8)) & 0xffff);
    return (tmp);
 }
 
@@ -76,7 +76,7 @@ int checkDevice(uint8_t bus, uint8_t device, uint8_t f) {
      if(vendorID == 0xFFFF) return 0;        // Device doesn't exist
      if(((pciConfigReadWord( bus, device, function, 0x0A ) >> 8)& 0xff) ==1 && 
         (pciConfigReadWord( bus, device, function, 0x0A )& 0xff) == 6){
-       kprintf("AHCI found vendor id : %x %x\n", vendorID, pciConfigReadWord( bus, device, function, 0x2 ));
+       kprintf("AHCI found vendor id : %x %x\n", vendorID, pciConfigReadWord( bus, device, function, 0x2 ));       
        parse_ahci(bus, device, function);
        return 0;
    }
@@ -98,17 +98,15 @@ void checkAllBuses(void) {
 
 
 void parse_ahci(uint8_t bus, uint8_t device, uint8_t function) {
-  uint64_t abar, temp;
+  uint64_t abar;
   uint16_t bar5_l = pciConfigReadWord( bus, device, function, 0x24 );
+  sysOutLong (0xCFC, 0x20000000); //move the ahci to a valid memory address
+  bar5_l = pciConfigReadWord( bus, device, function, 0x24 );
   uint16_t bar5_h = pciConfigReadWord( bus, device, function, 0x26 );
   uint32_t abar5 =  (uint32_t)bar5_h << 16|bar5_l ; 
-  uint16_t bar4_l = pciConfigReadWord( bus, device, function, 0x20 );
-  uint16_t bar4_h = pciConfigReadWord( bus, device, function, 0x22 );
-  uint32_t abar4 =  (uint32_t)bar4_h << 16|bar4_l ;
-  abar = (uint64_t)abar4 << 32 | abar5;
-  temp = (uint64_t)abar5;
+  abar = (uint64_t)abar5;
   kprintf("abar %x\n", abar);
-  probe_port((hba_mem_t *)temp); 
+  probe_port((hba_mem_t *)abar); 
 }
 
 void dump_abar(hba_mem_t *abar){
@@ -127,11 +125,9 @@ void dump_abar(hba_mem_t *abar){
 
 void probe_port(hba_mem_t *abar)
 {
-//	uint64_t temp = (uint64_t)abar;
-  //      kprintf("temp = %p", temp);
         // Search disk in impelemented ports
 	uint32_t pi = abar->pi;
-        dump_abar(abar);
+//        dump_abar(abar);
         int i = 0;
 	while (i<32)
 	{
