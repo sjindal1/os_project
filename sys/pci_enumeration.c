@@ -205,8 +205,8 @@ void read_write_data2hdd(hba_mem_t *abar){
   
   for(int i=0;i<100;i++){
     memset(buf, i, 4096);
-    write(&abar->ports[1],i+3,0,8,buf);
-    read(&abar->ports[1],i+3,0,8,buf2);
+    write(&abar->ports[1],i*8,0,8,buf);
+    read(&abar->ports[1],i*8,0,8,buf2);
     kprintf("readb -> %d ",(uint8_t) buf2[0]);
   }
   
