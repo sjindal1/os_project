@@ -248,7 +248,6 @@ void read_write_data2hdd(hba_mem_t *abar){
   reset_port(abar, 0);
   uint64_t *buf = (uint64_t *)0x400000;
   uint64_t *buf2 = (uint64_t *)0x500000;
-  kprintf("inside write\n");
   for(int i=0;i<100;i++){
     memset(buf, i, 4096);
     buf2[0] = 0xdeaddeaddeaddead;
@@ -258,7 +257,7 @@ void read_write_data2hdd(hba_mem_t *abar){
     //kprintf("ssts -> %x is_rwc -> %x tfd -> %x\n", abar->ports[0].ssts, abar->ports[0].is_rwc, abar->ports[0].tfd);
     read(&abar->ports[0],i*8,0,8,buf2);
     sleep();
-    kprintf("rb->%d ",(uint8_t) buf2[0]);
+    kprintf("readb->%d ",(uint8_t) buf2[0]);
   } 
 }
 
@@ -266,7 +265,7 @@ void probe_port(hba_mem_t *abar)
 {
   volatile uint32_t pi = abar->pi;
   int i = 0;
-  kprintf("pi = %x\n", pi);
+  //kprintf("pi = %x\n", pi);
   //kprintf("cap = %x\n", abar->cap);
   while (i<32)
   {
