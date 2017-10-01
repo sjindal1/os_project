@@ -104,6 +104,9 @@ void kprintf(const char *fmt, ...){
                 array_pos++;
             }
         }
+        if(x_pos == xmax && final_str[array_pos] == '\0'){
+          y_pos++;  
+        }
         if(x_pos == xmax){
             x_pos = 0;
         }
