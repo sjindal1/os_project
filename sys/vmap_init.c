@@ -24,9 +24,9 @@ void create4KbPages(uint32_t *modulep,void *physbase, void *physfree){
   for(smap = (struct smap_t*)(modulep+2); smap < (struct smap_t*)((char*)modulep+modulep[1]+2*4); ++smap) {
     if (smap->type == 1 /* memory */ && smap->length != 0) {
       free_mem_boundaries[i++] = smap->base;  
-      kprintf("Free boundary entry %p\n", free_mem_boundaries[i-1]);
+      //kprintf("Free boundary entry %p\n", free_mem_boundaries[i-1]);
       free_mem_boundaries[i++] = smap->base + smap->length;
-      kprintf("Free boundary entry%p\n", free_mem_boundaries[i-1]);
+      //kprintf("Free boundary entry%p\n", free_mem_boundaries[i-1]);
     }
   }
   page_frame_t *head = (page_frame_t*)physfree;
@@ -49,7 +49,7 @@ void create4KbPages(uint32_t *modulep,void *physbase, void *physfree){
   }
 
   int array_page = page_count * 32 / 4096 + 1 + pages_till_physfree; // +1 since we have a division so it will be floored we need to take 1 as a buffer
-  kprintf("no of pages used to store array %d\n", array_page);
+  //kprintf("no of pages used to store array %d\n", array_page);
 
   for(int i=0;i<array_page;i++){
     page_frame_t *t = head + i;
@@ -64,14 +64,14 @@ void create4KbPages(uint32_t *modulep,void *physbase, void *physfree){
   table_end = free_page;
   t->prev = NULL;
   t->next = (page_frame_t*)(link_start + 1); 
-  kprintf("prev -> %x, next -> %x t-> %x  \n", t->prev,t->next, t);
+  //kprintf("prev -> %x, next -> %x t-> %x  \n", t->prev,t->next, t);
  
   // last element
   t = head + page_count - 1;
   t->prev = (page_frame_t *)(head+page_count-2);
   t->next = NULL;
   
-  kprintf("prev -> %x, next -> %x t-> %x  \n", t->prev,t->next, t);
+  //kprintf("prev -> %x, next -> %x t-> %x  \n", t->prev,t->next, t);
   
   for(int i = 1; i < page_count - 1 - array_page ;i++){
     t = link_start + i;
@@ -84,14 +84,13 @@ void create4KbPages(uint32_t *modulep,void *physbase, void *physfree){
   }
   kprintf("no of page frames created %d\n", page_count);*/
   
-  kprintf("physbase -> %x, physfree -> %x, array_end -> %x, array_start -> %x\n", physbase, physfree, (free_page-1)->start, free_page->start);
+  //kprintf("physbase -> %x, physfree -> %x, array_end -> %x, array_start -> %x\n", physbase, physfree, (free_page-1)->start, free_page->start);
 
-  uint64_t* page = get_free_page();
-  kprintf("get free page %x\n", page);
-  free(page);
-  page = get_free_page();
-  kprintf("get free page 2nd time %x\n", page);
-  kernel_init();
+  //uint64_t* page = get_free_page();
+  //kprintf("get free page %x\n", page);
+  //free(page);
+  //page = get_free_page();
+  //kprintf("get free page 2nd time %x\n", page);
 }
 
 //returns the first free page from the free_list
@@ -123,7 +122,7 @@ void free(uint64_t* address){
   } 
 }*/
 
-void kernel_init(){
+uint64_t* kernel_init(){
   // kernel memory address = 0xffff ffff 8020 0000
   // 63 - 48 = 0xffff
   // PML4 - 9 bits - 47 - 39 = 1111 1111 1    // binary   -> hex - 0x1ff
@@ -156,28 +155,74 @@ void kernel_init(){
   uint32_t pt_init = get_pt((uint64_t)&kernmem);
   
   // set pml4[511] = pdp | 0x1;
-  page_info.pml4[pml4_init] = (uint64_t)pdp | 0x3;
+  page_info.pml4[pml4_init] = (uint64_t)page_info.pdp | 0x3;
 
   //PDP setting
   // so PDP offset is 510 ~ 0x1fe, set others to zero
-  page_info.pdp[pdp_init] = (uint64_t)pd | 0x3;
+  page_info.pdp[pdp_init] = (uint64_t)page_info.pd | 0x3;
 
   //PD setting
   // so PD offset is 1 ~ 0x1, set others to zero
-  page_info.pd[pd_init] = (uint64_t)pt | 0x3;
+  page_info.pd[pd_init] = (uint64_t)page_info.pt | 0x3;
 
   size /= 4096;
-  for(uint64_t i=pt_init;i<size+pt_init;i++){
-    if(i!=0 && (i)%(512*512*512)==0){
+  uint64_t curkermem = (uint64_t) &physbase;
+  for(uint64_t j=0,i=pt_init;j<size;j++,i++){
+    if(pt_init < 512)
+    {
+      if(j < 10)
+        kprintf("j = %d, pt_init = %d, kmst = %x, kmend = %x\n", j, pt_init, curkermem, curkermem + 4096);
+      page_info.pt[pt_init++] = (curkermem|0x3);
+      curkermem += 4096;
+    }
+    else // pt table is full
+    {
       uint64_t *page = get_free_page();
-      page_info.pml4[pml4_init] = (uint64_t)pdp | 0x3;
+      pt_init = 0;
+
+      kprintf("Kernel PT table is full, creating new\n");
+      page_info.pt = page;
+      page_info.pt[pt_init++] = (curkermem|0x3);
+      curkermem += 4096;
+
+      //add a pd entry
+      if(++pd_init < 512)
+      {
+        page_info.pd[pd_init] = ((uint64_t)page_info.pt|0x3);
+      }
+      else  // pd table is full
+      {
+        kprintf("Kernel PD table is full, creating new \n");
+        pd_init = 0;
+        page = get_free_page();
+
+        page_info.pd = page;
+        page_info.pd[pd_init++] =  ((uint64_t)page_info.pt|0x3);
+
+        //add a new pdp entry
+        if(++pdp_init < 512)
+        {
+          page_info.pdp[pdp_init] = ((uint64_t)page_info.pd|0x3);
+        }
+        else  // pdp table is full
+        {
+          kprintf("Kernel PDP table is full, creating new\n");
+          pdp_init = 0;
+          page = get_free_page();
+
+          page_info.pdp = page;
+          page_info.pdp[pdp_init++] = ((uint64_t) page_info.pd|0x3);
+
+          //add a new pml4 entry
+          page_info.pml4[pml4_init++] = ((uint64_t) page_info.pdp|0x3);
+        }
+
+      }
     }
-    if(i!=0 && (i)%512 == 0){
-      uint64_t* page = get_free_page();
-      pd[]
-    }
+    
   }  
 
+  return page_info.pml4;    // to be set to CR3 :)
 }
 
 void clear_page(uint64_t *page){

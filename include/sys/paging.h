@@ -9,7 +9,7 @@ typedef struct page_frame_t page_frame_t;
 
 void free(uint64_t* address);
 
-void kernel_init();
+uint64_t* kernel_init();
 
 void clear_page(uint64_t *page);
 
