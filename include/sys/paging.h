@@ -9,6 +9,20 @@ typedef struct page_frame_t page_frame_t;
 
 void free(uint64_t* address);
 
+void kernel_init();
+
+void clear_page(uint64_t *page);
+
+typedef struct page_dir page_dir;
+
+struct page_dir
+{
+  uint64_t *pml4;
+  uint64_t *pdp;
+  uint64_t *pd;
+  uint64_t *pt;
+};
+
 struct page_frame_t{
   uint64_t* start;
   page_frame_t *next,*prev;
