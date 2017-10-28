@@ -252,10 +252,10 @@ void read_write_data2hdd(hba_mem_t *abar){
     memset(buf, i, 4096);
     buf2[0] = 0xdeaddeaddeaddead;
     buf2[1] = 0xdeaddeaddeaddead;
-    //write(&abar->ports[0],i*8,0,8,buf);
+    write(&abar->ports[0],i*8,0,8,buf);
     sleep();
     //kprintf("ssts -> %x is_rwc -> %x tfd -> %x\n", abar->ports[0].ssts, abar->ports[0].is_rwc, abar->ports[0].tfd);
-    //read(&abar->ports[0],i*8,0,8,buf2);
+    read(&abar->ports[0],i*8,0,8,buf2);
     sleep();
     kprintf("readb->%d ",(uint8_t) buf2[0]);
   } 
@@ -297,7 +297,7 @@ void probe_port(hba_mem_t *abar)
     pi >>= 1;
     i ++;
   }
-  //read_write_data2hdd(abar);
+  read_write_data2hdd(abar);
 }
  
 // Check device type

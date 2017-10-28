@@ -5,14 +5,12 @@
 #include <sys/ahci.h>
 #include <sys/pic.h>
 #include <sys/idt.h>
-#include <sys/paging.h>
 
 #define INITIAL_STACK_SIZE 4096
 uint8_t initial_stack[INITIAL_STACK_SIZE]__attribute__((aligned(16)));
 uint32_t* loader_stack;
 extern char kernmem, physbase;
-uint64_t *kernel_cr3;
-void cr3_init_asm();
+
 void checkAllBuses(void);
 
 void _x86_64_asm_pit_100ms();
@@ -23,8 +21,6 @@ void start(uint32_t *modulep, void *physbase, void *physfree)
     uint64_t base, length;
     uint32_t type;
   }__attribute__((packed)) *smap;
-  
-  
   //checkAllBuses();
   while(modulep[0] != 0x9001) modulep += modulep[1]+2;
   for(smap = (struct smap_t*)(modulep+2); smap < (struct smap_t*)((char*)modulep+modulep[1]+2*4); ++smap) {
@@ -32,15 +28,9 @@ void start(uint32_t *modulep, void *physbase, void *physfree)
       kprintf("Available Physical Memory [%p-%p]\n", smap->base, smap->base + smap->length);
     }
   }
-  kprintf("physbase %p\n", (uint64_t)physbase);
   kprintf("physfree %p\n", (uint64_t)physfree);
   kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
-  create4KbPages(modulep, physbase, physfree);
-  kernel_cr3 = kernel_init();
-  kprintf("kernel_cr3 -> %x\n",kernel_cr3);
-  cr3_init_asm();
-  //kprintf("success\n");
-  //checkAllBuses();
+  checkAllBuses();
   /*init_pic();
   //_x86_64_asm_pit_100ms();
   init_idt();
