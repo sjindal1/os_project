@@ -33,7 +33,7 @@ void print_time(int time){
   int sec = time % 60;
   int min = time / 60;
   char time_str[] = "Time Since Boot : 00:00";
-  long cursor_pos = ( (0xb8000+160*24)-2 - 22*2);
+  long cursor_pos = ( (PRINT_BUF_ADDRESS+160*24)-2 - 22*2);
   register char *addr = (char *) cursor_pos;
   if(min <= 9){
     time_str[19] = min + 48;
@@ -57,7 +57,7 @@ void print_time(int time){
 
 void key_press_handle()
 {
-   long cursor_pos = ( (0xb8000+160*24)-2 - 40*2);
+   long cursor_pos = ( (PRINT_BUF_ADDRESS+160*24)-2 - 40*2);
    register char *addr = (char *)cursor_pos;
    unsigned char scan_code;
    __asm__ __volatile__ ("inb $0x60, %%al\n\t"

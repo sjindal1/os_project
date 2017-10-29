@@ -5,6 +5,8 @@
 #define O_RDONLY	0x0000
 #define O_WRONLY	0x0001
 #define O_RDWR		0x0002
+#define PRINT_BUF_ADDRESS 0xFFFFFFFF90000000
+//#define PRINT_BUF_ADDRESS 0xB8000
 
 typedef unsigned long  uint64_t;
 typedef          long   int64_t;

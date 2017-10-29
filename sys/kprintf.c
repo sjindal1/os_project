@@ -1,5 +1,6 @@
 #include <sys/kprintf.h>
 #include <sys/stdarg.h>
+#include <sys/defs.h>
 
 char *getStrFromInt(char *str, int arg_val, int code_type);
 char *getStrFromUnsignlong(char *str, unsigned long arg_val, int code_type);
@@ -29,9 +30,9 @@ void buffCopy(){
 
 void displayBuff(){
     register char *temp1, *temp2;
-    for(temp2 = (char*)0xb8001; temp2 < (char*)0xb8000+160*ymax; temp2 += 2) *temp2 = 7 /* white */;
+    for(temp2 = (char*)PRINT_BUF_ADDRESS; temp2 < (char*)PRINT_BUF_ADDRESS+160*ymax; temp2 += 2) *temp2 = 7 /* white */;
     temp1 = &buf[0][0];
-    for(temp2 = (char*)0xb8000; temp2 < (char*)0xb8000+160*ymax; temp1 += 1, temp2 += 2) *temp2 = *temp1;
+    for(temp2 = (char*)PRINT_BUF_ADDRESS; temp2 < (char*)PRINT_BUF_ADDRESS+160*ymax; temp1 += 1, temp2 += 2) *temp2 = *temp1;
 }
 
 

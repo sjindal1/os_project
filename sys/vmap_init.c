@@ -91,6 +91,9 @@ void create4KbPages(uint32_t *modulep,void *physbase, void *physfree){
   //free(page);
   //page = get_free_page();
   //kprintf("get free page 2nd time %x\n", page);
+
+  //kprintf("end of create4KbPages function");
+  return;
 }
 
 //returns the first free page from the free_list
@@ -137,10 +140,10 @@ uint64_t* kernel_init(){
   page_info.pd = get_free_page();
   page_info.pt = get_free_page();
 
-  kprintf("array_start -> %x, physbase ->%x, kernmem ->%x\n",table_end->start, (uint64_t)&physbase, (uint64_t)&kernmem);
+  //kprintf("array_start -> %x, physbase ->%x, kernmem ->%x\n",table_end->start, (uint64_t)&physbase, (uint64_t)&kernmem);
   uint64_t size = (uint64_t)(table_end->start) - (uint64_t)&physbase;
 
-  kprintf("size of the kernel %x, no of pages used %x\n", size, size/4096);
+  //kprintf("size of the kernel %x, no of pages used %x\n", size, size/4096);
   //Make all the entries in the pages as writeable but set the pages as not used.
   for(int i=0; i < 512; i++){
     page_info.pml4[i] = 0x00000002;
@@ -170,8 +173,8 @@ uint64_t* kernel_init(){
   for(uint64_t j=0,i=pt_init;j<size;j++,i++){
     if(pt_init < 512)
     {
-      if(j < 10)
-        kprintf("j = %d, pt_init = %d, kmst = %x, kmend = %x\n", j, pt_init, curkermem, curkermem + 4096);
+      /*if(j < 10)
+        kprintf("j = %d, pt_init = %d, kmst = %x, kmend = %x\n", j, pt_init, curkermem, curkermem + 4096);*/
       page_info.pt[pt_init++] = (curkermem|0x3);
       curkermem += 4096;
     }
@@ -220,7 +223,20 @@ uint64_t* kernel_init(){
       }
     }
     
-  }  
+  }
+  
+  //move video buffer 0xb8000 to 0xFFFFFFFF9000000
+  uint64_t v_mem_address = 0xFFFFFFFF90000000;
+  uint64_t v_mem_pd = get_pd(v_mem_address);
+  uint64_t v_mem_pt = get_pt(v_mem_address);
+  //kprintf("v_mem_pdp-> %x, v_mem_pd -> %x, v_mem_pt -> %x\n", v_mem_pdp, v_mem_pd, v_mem_pt);
+
+  uint64_t *page = get_free_page();
+  page_info.pt = page;
+  page_info.pd[v_mem_pd] = (uint64_t)page_info.pt | 0x3;
+
+  page_info.pt[v_mem_pt] = 0xb8000 | 0x3;
+
 
   return page_info.pml4;    // to be set to CR3 :)
 }
