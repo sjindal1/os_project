@@ -6,6 +6,7 @@
 #include <sys/pic.h>
 #include <sys/idt.h>
 #include <sys/paging.h>
+#include <sys/kernel.h>
 
 #define INITIAL_STACK_SIZE 4096
 
@@ -46,6 +47,7 @@ void start(uint32_t *modulep, void *physbase, void *physfree)
   kprintf("physbase %p\n", (uint64_t)physbase);
   kprintf("physfree %p\n", (uint64_t)physfree);
   kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
+  main_task();
   //
   //checkAllBuses();
   /*init_pic();
