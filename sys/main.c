@@ -16,7 +16,7 @@ extern char kernmem, physbase;
 uint64_t *kernel_cr3;
 void cr3_init_asm();
 void checkAllBuses(void);
-
+extern uint64_t free_virtual_address;
 void _x86_64_asm_pit_100ms();
 
 void start(uint32_t *modulep, void *physbase, void *physfree)
@@ -24,9 +24,9 @@ void start(uint32_t *modulep, void *physbase, void *physfree)
   init_gdt();
   create4KbPages(modulep,physbase,physfree);
   kernel_cr3 = kernel_init();
-  //kprintf("kernel_cr3 -> %x\n",kernel_cr3);
   cr3_init_asm();
   kprintf("success\n");
+  kprintf("kernel_cr3 -> %x\n",kernel_cr3);
   init_pic();
   init_idt();
   _x86_64_asm_pit_100ms();
@@ -47,6 +47,7 @@ void start(uint32_t *modulep, void *physbase, void *physfree)
   kprintf("physbase %p\n", (uint64_t)physbase);
   kprintf("physfree %p\n", (uint64_t)physfree);
   kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
+  kprintf("free_virtual_address -> %x\n",free_virtual_address);
   main_task();
   //
   //checkAllBuses();

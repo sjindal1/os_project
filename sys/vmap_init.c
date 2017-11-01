@@ -7,6 +7,12 @@ uint64_t get_pdp(uint64_t kermem);
 uint64_t get_pd(uint64_t kermem);
 uint64_t get_pt(uint64_t kermem);
 
+uint32_t pml4_off;
+uint32_t pdp_off;
+uint32_t pd_off;
+uint32_t pt_off;
+
+uint64_t free_virtual_address;
 
 page_frame_t *free_page,*table_end;
 extern char kernmem, physbase;
@@ -60,6 +66,7 @@ void create4KbPages(uint32_t *modulep,void *physbase, void *physfree){
   // first page
   page_frame_t *link_start = head + array_page;
   page_frame_t *t = link_start;
+  free_virtual_address = (uint64_t)((uint64_t)&kernmem + (uint64_t)link_start->start);
   free_page = link_start;
   table_end = free_page;
   t->prev = NULL;
@@ -101,8 +108,22 @@ uint64_t* get_free_page(){
   page_frame_t *t = free_page;
   t->info = 1;
   free_page = t->next;
+  //kprintf("start address in get free page->%x\n",t->start);
   return t->start;
 }
+
+//returns the first free page from the free_list
+uint64_t* get_free_self__ref_page(){
+  page_frame_t *t = free_page;
+  t->info = 1;
+  free_page = t->next;
+  //kprintf("start address before ->%x\n",t->start);
+  t->start[511] = (uint64_t)t->start | 0x3;
+  //kprintf("start address after ->%x, value at t->start[511]->%x\n",t->start,temp[511]);
+  return t->start;
+}
+
+
 
 //add the page to the head of the linked list
 void free(uint64_t* address){
@@ -133,91 +154,100 @@ uint64_t* kernel_init(){
   // PD   - 9 bits - 29 - 21 = 00 0000 001    // binary   -> hex - 0x001
   // PT   - 9 bits - 12 - 20 = 0 0000 0000    // binary   -> hex - 0x000
   // 12 bits - 0 - 11 = 0000 0000 0000 // binary   -> hex - 0x000
-  page_dir page_info;
-  
-  page_info.pml4 = get_free_page();
-  page_info.pdp = get_free_page();
-  page_info.pd = get_free_page();
-  page_info.pt = get_free_page();
+  page_dir kernel_page_info;
+
+  kernel_page_info.pml4 = get_free_self__ref_page();
+  kernel_page_info.pdp = kernel_page_info.pml4;
+  kernel_page_info.pd = get_free_self__ref_page();
+  kernel_page_info.pt = get_free_self__ref_page();
 
   //kprintf("array_start -> %x, physbase ->%x, kernmem ->%x\n",table_end->start, (uint64_t)&physbase, (uint64_t)&kernmem);
   uint64_t size = (uint64_t)(table_end->start) - (uint64_t)&physbase;
 
   //kprintf("size of the kernel %x, no of pages used %x\n", size, size/4096);
   //Make all the entries in the pages as writeable but set the pages as not used.
-  for(int i=0; i < 512; i++){
-    page_info.pml4[i] = 0x00000002;
-    page_info.pdp[i] = 0x00000002;
-    page_info.pd[i] = 0x00000002;
-    page_info.pt[i] = 0x00000002;
+  for(int i=0; i < 511; i++){
+    kernel_page_info.pml4[i] = 0x00000002;
+    kernel_page_info.pdp[i] = 0x00000002;
+    kernel_page_info.pd[i] = 0x00000002;
+    kernel_page_info.pt[i] = 0x00000002;
   }
 
-  uint32_t pml4_init = get_pml4((uint64_t)&kernmem);
-  uint32_t pdp_init = get_pdp((uint64_t)&kernmem);
-  uint32_t pd_init = get_pd((uint64_t)&kernmem);
-  uint32_t pt_init = get_pt((uint64_t)&kernmem);
+  pml4_off = get_pml4((uint64_t)&kernmem);
+  pdp_off = get_pdp((uint64_t)&kernmem);
+  pd_off = get_pd((uint64_t)&kernmem);
+  pt_off = get_pt((uint64_t)&kernmem);
   
   // set pml4[511] = pdp | 0x1;
-  page_info.pml4[pml4_init] = (uint64_t)page_info.pdp | 0x3;
-
+  /*if(pml4_off == 511)
+    kernel_page_info.pdp = kernel_page_info.pml4;
+  else
+    kernel_page_info.pml4[pml4_off] = (uint64_t)kernel_page_info.pdp | 0x3;
+*/
   //PDP setting
   // so PDP offset is 510 ~ 0x1fe, set others to zero
-  page_info.pdp[pdp_init] = (uint64_t)page_info.pd | 0x3;
+  /*if(pdp_off == 511)
+    kernel_page_info.pd = kernel_page_info.pdp;
+  else*/
+  kernel_page_info.pdp[pdp_off] = (uint64_t)kernel_page_info.pd | 0x3;
 
   //PD setting
   // so PD offset is 1 ~ 0x1, set others to zero
-  page_info.pd[pd_init] = (uint64_t)page_info.pt | 0x3;
+  /*if(pd_off == 511)
+    kernel_page_info.pt = kernel_page_info.pd;
+  else*/
+  kernel_page_info.pd[pd_off] = (uint64_t)kernel_page_info.pt | 0x3;
 
   size /= 4096;
   uint64_t curkermem = (uint64_t) &physbase;
-  for(uint64_t j=0,i=pt_init;j<size;j++,i++){
-    if(pt_init < 512)
+  for(uint64_t j=0,i=pt_off;j<size;j++,i++){
+    if(pt_off < 512)
     {
       /*if(j < 10)
-        kprintf("j = %d, pt_init = %d, kmst = %x, kmend = %x\n", j, pt_init, curkermem, curkermem + 4096);*/
-      page_info.pt[pt_init++] = (curkermem|0x3);
+        kprintf("j = %d, pt_off = %d, kmst = %x, kmend = %x\n", j, pt_off, curkermem, curkermem + 4096);*/
+      kernel_page_info.pt[pt_off++] = (curkermem|0x3);
       curkermem += 4096;
     }
     else // pt table is full
     {
-      uint64_t *page = get_free_page();
-      pt_init = 0;
+      uint64_t *page = get_free_self__ref_page();
+      pt_off = 0;
 
       kprintf("Kernel PT table is full, creating new\n");
-      page_info.pt = page;
-      page_info.pt[pt_init++] = (curkermem|0x3);
+      kernel_page_info.pt = page;
+      kernel_page_info.pt[pt_off++] = (curkermem|0x3);
       curkermem += 4096;
 
       //add a pd entry
-      if(++pd_init < 512)
+      if(++pd_off < 512)
       {
-        page_info.pd[pd_init] = ((uint64_t)page_info.pt|0x3);
+        kernel_page_info.pd[pd_off] = ((uint64_t)kernel_page_info.pt|0x3);
       }
       else  // pd table is full
       {
         kprintf("Kernel PD table is full, creating new \n");
-        pd_init = 0;
-        page = get_free_page();
+        pd_off = 0;
+        page = get_free_self__ref_page();
 
-        page_info.pd = page;
-        page_info.pd[pd_init++] =  ((uint64_t)page_info.pt|0x3);
+        kernel_page_info.pd = page;
+        kernel_page_info.pd[pd_off++] =  ((uint64_t)kernel_page_info.pt|0x3);
 
         //add a new pdp entry
-        if(++pdp_init < 512)
+        if(++pdp_off < 512)
         {
-          page_info.pdp[pdp_init] = ((uint64_t)page_info.pd|0x3);
+          kernel_page_info.pdp[pdp_off] = ((uint64_t)kernel_page_info.pd|0x3);
         }
         else  // pdp table is full
         {
           kprintf("Kernel PDP table is full, creating new\n");
-          pdp_init = 0;
-          page = get_free_page();
+          pdp_off = 0;
+          page = get_free_self__ref_page();
 
-          page_info.pdp = page;
-          page_info.pdp[pdp_init++] = ((uint64_t) page_info.pd|0x3);
+          kernel_page_info.pdp = page;
+          kernel_page_info.pdp[pdp_off++] = ((uint64_t) kernel_page_info.pd|0x3);
 
           //add a new pml4 entry
-          page_info.pml4[pml4_init++] = ((uint64_t) page_info.pdp|0x3);
+          kernel_page_info.pml4[pml4_off++] = ((uint64_t) kernel_page_info.pdp|0x3);
         }
 
       }
@@ -232,17 +262,17 @@ uint64_t* kernel_init(){
   //kprintf("v_mem_pdp-> %x, v_mem_pd -> %x, v_mem_pt -> %x\n", v_mem_pdp, v_mem_pd, v_mem_pt);
 
   uint64_t *page = get_free_page();
-  page_info.pt = page;
-  page_info.pd[v_mem_pd] = (uint64_t)page_info.pt | 0x3;
+  kernel_page_info.pt = page;
+  kernel_page_info.pd[v_mem_pd] = (uint64_t)kernel_page_info.pt | 0x3;
 
-  page_info.pt[v_mem_pt] = 0xb8000 | 0x3;
+  kernel_page_info.pt[v_mem_pt] = 0xb8000 | 0x3;
 
 
-  return page_info.pml4;    // to be set to CR3 :)
+  return kernel_page_info.pml4;    // to be set to CR3 :)
 }
 
 void clear_page(uint64_t *page){
-  for(int i=0; i < 512; i++){
+  for(int i=0; i < 511; i++){
     page[i] = 0x00000002;
   }
 }
