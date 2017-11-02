@@ -13,8 +13,10 @@ uint32_t pd_off;
 uint32_t pt_off;
 
 uint64_t free_virtual_address;
-
 page_frame_t *free_page,*table_end;
+uint64_t page_count;
+
+page_frame_t *head;
 extern char kernmem, physbase;
 
 void create4KbPages(uint32_t *modulep,void *physbase, void *physfree){
@@ -25,48 +27,61 @@ void create4KbPages(uint32_t *modulep,void *physbase, void *physfree){
 
   //Store all the available memory boundaries in an array free memory boundaries
   uint64_t free_mem_boundaries[40];
-  uint32_t i = 0;
+  uint32_t no_bound = 0;
   while(modulep[0] != 0x9001) modulep += modulep[1]+2;
   for(smap = (struct smap_t*)(modulep+2); smap < (struct smap_t*)((char*)modulep+modulep[1]+2*4); ++smap) {
     if (smap->type == 1 /* memory */ && smap->length != 0) {
-      free_mem_boundaries[i++] = smap->base;  
+      free_mem_boundaries[no_bound++] = smap->base;  
       //kprintf("Free boundary entry %p\n", free_mem_boundaries[i-1]);
-      free_mem_boundaries[i++] = smap->base + smap->length;
+      free_mem_boundaries[no_bound++] = smap->base + smap->length;
       //kprintf("Free boundary entry%p\n", free_mem_boundaries[i-1]);
     }
   }
-  page_frame_t *head = (page_frame_t*)physfree;
+  head = (page_frame_t*)physfree;
   int j=0,pages_till_physfree = 0;
-  uint64_t page_count = 0, mem_start = free_mem_boundaries[j++];
-  while(j<i){
+  page_count = 0;
+  uint64_t mem_start = free_mem_boundaries[0];
+  while(mem_start < free_mem_boundaries[no_bound-1]){
+    page_frame_t *t = head + page_count;
+    t->start = (uint64_t*) mem_start;
+    t->info = (uint64_t) 0;
+    page_count++;
+    if(mem_start < (uint64_t)physfree){
+      pages_till_physfree++;
+    }
+    mem_start += 4096;
+  }
+
+  //mark all pages till physfree + array size as used.
+  int array_page = page_count * sizeof(page_frame_t) / 4096 + 1 + pages_till_physfree; // +1 since we have 
+  //a division so it will be floored we need to take 1 as a buffer
+  
+  kprintf("pages_till_physfree -> %d, page_count -> %d\n",pages_till_physfree,page_count);
+
+  //mark pages till the array end as used
+  for(int i=0;i<array_page;i++){
+    page_frame_t *t = head + i;
+    t->info = 1 | (uint64_t)1 << 32;
+  }
+
+  //mark all the holes as 3
+  j=1;
+  mem_start = free_mem_boundaries[j++];
+  while(j<no_bound-1){
     if(mem_start + 4096 < free_mem_boundaries[j]){
-      page_frame_t *t = head + page_count;
-      t->start = (uint64_t*) mem_start;
-      t->info = (uint64_t) 0;
-      page_count++;
-      if(mem_start < (uint64_t)physfree){
-        pages_till_physfree++;
-      }
+      page_frame_t *t = head + (mem_start/4096);
+      t->info = (uint64_t) 3;
       mem_start += 4096;
     }else{
       j++;
       mem_start = free_mem_boundaries[j++];
     }
   }
-
-  int array_page = page_count * 32 / 4096 + 1 + pages_till_physfree; // +1 since we have a division so it will be floored we need to take 1 as a buffer
-  //kprintf("no of pages used to store array %d\n", array_page);
-
-  for(int i=0;i<array_page;i++){
-    page_frame_t *t = head + i;
-    t->info=1;
-  }
   
   // The link list will start after the page descriptor have finished
   // first page
   page_frame_t *link_start = head + array_page;
   page_frame_t *t = link_start;
-  free_virtual_address = (uint64_t)((uint64_t)&kernmem + (uint64_t)link_start->start);
   free_page = link_start;
   table_end = free_page;
   t->prev = NULL;
@@ -106,31 +121,58 @@ void create4KbPages(uint32_t *modulep,void *physbase, void *physfree){
 //returns the first free page from the free_list
 uint64_t* get_free_page(){
   page_frame_t *t = free_page;
-  t->info = 1;
+  t->info = 1 | (uint64_t)1 << 32;
   free_page = t->next;
-  //kprintf("start address in get free page->%x\n",t->start);
   return t->start;
 }
 
 //returns the first free page from the free_list
 uint64_t* get_free_self__ref_page(){
   page_frame_t *t = free_page;
-  t->info = 1;
+  t->info = 1 | (uint64_t)1 << 32;
   free_page = t->next;
-  //kprintf("start address before ->%x\n",t->start);
   t->start[511] = (uint64_t)t->start | 0x3;
-  //kprintf("start address after ->%x, value at t->start[511]->%x\n",t->start,temp[511]);
   return t->start;
 }
 
-
-
-//add the page to the head of the linked list
+//add the page to the required index in the array and set the links correctly
 void free(uint64_t* address){
-  page_frame_t *t = free_page;
-  free_page = t->prev;
-  free_page->info = 0;
-  free_page->start = address;
+  int page_index = (uint64_t)address/4096;
+  page_frame_t *t_start = head + page_index;
+  int no_of_pages = t_start->info >> 32;
+  page_frame_t *t_end = head + (page_index + no_of_pages -1);
+  
+  //linking all freed pages together
+  page_frame_t *temp = t_start+1;
+  for(int i = 1; i<no_of_pages;i++){
+    temp->info = 0;
+    temp->next = temp + 1;
+    temp->prev = temp - 1;
+    temp++;
+  }
+
+  t_start->info = 0;
+  t_start->prev = NULL;
+  t_start->next = t_start + 1;
+  t_end->info = 0;
+  t_end->next = NULL;
+
+  if(address < free_page->start){
+    t_end->next = free_page;
+    free_page->prev = t_end;
+    free_page = t_start;
+  }else{
+    for(int i=page_index-1;i>=0;i--){
+      page_frame_t *des = head + i;
+      if(des->info == 0){
+        t_end->next = des->next;
+        des->next->prev = t_end;
+        des->next = t_start;
+        t_start->prev = des;
+        break;
+      }
+    }
+  }
 }
 
 /*void kernel_init(){
@@ -272,7 +314,7 @@ uint64_t* kernel_init(){
 }
 
 void clear_page(uint64_t *page){
-  for(int i=0; i < 511; i++){
+  for(int i=0; i < 512; i++){
     page[i] = 0x00000002;
   }
 }
@@ -303,4 +345,11 @@ uint64_t get_pt(uint64_t kermem)
   uint64_t mask = 0x1ff;//0x0000ff8000000000;
   uint64_t shift = 12;
   return ((kermem >> shift) & mask);
+} 
+
+void  update_global_pointers(){
+  uint64_t va_temp = ((uint64_t)&kernmem - (uint64_t)&physbase + (uint64_t)head);
+  head = (page_frame_t *)va_temp;
+  va_temp = ((uint64_t)&kernmem - (uint64_t)&physbase + (uint64_t)free_page);
+  free_page = (page_frame_t *)va_temp;
 }

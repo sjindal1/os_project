@@ -7,7 +7,11 @@ uint64_t* get_free_page();
 
 typedef struct page_frame_t page_frame_t;
 
+void  update_global_pointers();
+
 void free(uint64_t* address);
+
+uint64_t* get_free_pages(uint32_t no_of_pages);
 
 uint64_t* kernel_init();
 

@@ -18,13 +18,14 @@ void cr3_init_asm();
 void checkAllBuses(void);
 extern uint64_t free_virtual_address;
 void _x86_64_asm_pit_100ms();
-
+extern page_frame_t *free_page,*head;
 void start(uint32_t *modulep, void *physbase, void *physfree)
 {
   init_gdt();
   create4KbPages(modulep,physbase,physfree);
   kernel_cr3 = kernel_init();
   cr3_init_asm();
+  update_global_pointers();
   kprintf("success\n");
   kprintf("kernel_cr3 -> %x\n",kernel_cr3);
   init_pic();
@@ -46,9 +47,14 @@ void start(uint32_t *modulep, void *physbase, void *physfree)
   }
   kprintf("physbase %p\n", (uint64_t)physbase);
   kprintf("physfree %p\n", (uint64_t)physfree);
+  kprintf("head %p, free_page %p\n", head, free_page);
   kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
   kprintf("free_virtual_address -> %x\n",free_virtual_address);
   main_task();
+  uint64_t *add = get_free_page();
+  kprintf("free Physical address %p\n",add);
+  free(add);
+  kprintf("free Physical address 2nd time%p\n",get_free_page());
   //
   //checkAllBuses();
   /*init_pic();
