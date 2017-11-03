@@ -19,6 +19,10 @@ uint64_t page_count;
 page_frame_t *head;
 extern char kernmem, physbase;
 
+page_dir kernel_page_info;
+
+uint64_t heap_start = HEAP_START_ADD;
+
 void create4KbPages(uint32_t *modulep,void *physbase, void *physfree){
   struct smap_t {
     uint64_t base, length;
@@ -118,6 +122,48 @@ void create4KbPages(uint32_t *modulep,void *physbase, void *physfree){
   return;
 }
 
+void create_page_table_entry(uint64_t *physical_add, uint64_t no_of_pages , uint64_t virtual_add){
+
+  uint32_t pd_off_new = get_pd(virtual_add);
+  uint32_t pt_off_new = get_pt(virtual_add);
+  
+
+  if((((uint64_t)kernel_page_info.pd[pd_off_new])>>12) == 0){
+    uint64_t *page = get_free_self__ref_page();
+    kernel_page_info.pd[pd_off_new] = (uint64_t)page | 0x3;
+  }
+
+  uint64_t *pt_address = (uint64_t *)((virtual_add & 0xFFFFFFFFFFE00000) | (uint64_t)0x1ff<<12 ) ;
+
+  uint64_t curkermem = (uint64_t) physical_add;
+  for(uint64_t j=0;j<no_of_pages;j++){
+    if(pt_off_new < 512)
+    {
+      /*if(j < 10)
+        kprintf("j = %d, pt_off = %d, kmst = %x, kmend = %x\n", j, pt_off, curkermem, curkermem + 4096);*/
+      pt_address[pt_off_new++] = (curkermem|0x3);
+      curkermem += 4096;
+    }
+    else // pt table is full
+    {
+      uint64_t *page = get_free_self__ref_page();
+      pt_off_new = 0;
+      kernel_page_info.pd[++pd_off_new] = (uint64_t)page | 0x3;
+      kprintf("Kernel PT table is full, creating new\n");
+      pt_address[pt_off_new++] = (curkermem|0x3);
+      curkermem += 4096;
+    } 
+  }
+}
+
+uint64_t* kmalloc(uint64_t size){
+  uint32_t no_of_pages = (size + 4095)/4096;
+  uint64_t *start_add = get_free_pages(no_of_pages);
+  create_page_table_entry(start_add,no_of_pages,heap_start);
+  heap_start = heap_start + no_of_pages*4096;
+  return (uint64_t *)(heap_start - no_of_pages*4096);
+}
+
 //returns the first free page from the free_list
 uint64_t* get_free_page(){
   page_frame_t *t = free_page;
@@ -133,6 +179,40 @@ uint64_t* get_free_self__ref_page(){
   free_page = t->next;
   t->start[511] = (uint64_t)t->start | 0x3;
   return t->start;
+}
+
+//returns continous pages
+uint64_t* get_free_pages(uint32_t no_of_pages){
+  if(no_of_pages == 1){
+    return get_free_page();
+  }
+  page_frame_t *start_add = free_page;
+  page_frame_t *t = start_add;
+  for(int i=0;i<no_of_pages;){
+    if(t->next != NULL && (uint64_t)t->next->start == (uint64_t)t->start + 4096){
+      i++;
+      t = t->next;
+    }else if(t->next != NULL){
+      i=0;
+      start_add = t->next;
+      t = t->next;
+    }else{
+      return NULL;
+    }
+  }
+  for(int i=0;i<no_of_pages;i++){
+    (start_add+i)->info = (uint64_t)0x1 | (uint64_t)no_of_pages<<32;
+  }
+  if(start_add == free_page){
+    free_page = t;
+    free_page->prev = NULL;
+  }else{
+    start_add->prev->next = t;
+    start_add-> prev = NULL;
+    t->prev->next = NULL;
+    t->prev = start_add->prev;
+  }
+  return start_add->start;
 }
 
 //add the page to the required index in the array and set the links correctly
@@ -196,15 +276,20 @@ uint64_t* kernel_init(){
   // PD   - 9 bits - 29 - 21 = 00 0000 001    // binary   -> hex - 0x001
   // PT   - 9 bits - 12 - 20 = 0 0000 0000    // binary   -> hex - 0x000
   // 12 bits - 0 - 11 = 0000 0000 0000 // binary   -> hex - 0x000
-  page_dir kernel_page_info;
 
+  //size of the kernel currently (array end - physbase)
+  uint64_t size = (uint64_t)(table_end->start) - (uint64_t)&physbase;
+
+  //alot pages for page tables and include these in the kernel for future access
   kernel_page_info.pml4 = get_free_self__ref_page();
+  size+=4096;
   kernel_page_info.pdp = kernel_page_info.pml4;
   kernel_page_info.pd = get_free_self__ref_page();
+  size+=4096;
   kernel_page_info.pt = get_free_self__ref_page();
-
+  size+=4096;
+  
   //kprintf("array_start -> %x, physbase ->%x, kernmem ->%x\n",table_end->start, (uint64_t)&physbase, (uint64_t)&kernmem);
-  uint64_t size = (uint64_t)(table_end->start) - (uint64_t)&physbase;
 
   //kprintf("size of the kernel %x, no of pages used %x\n", size, size/4096);
   //Make all the entries in the pages as writeable but set the pages as not used.
@@ -253,6 +338,7 @@ uint64_t* kernel_init(){
     else // pt table is full
     {
       uint64_t *page = get_free_self__ref_page();
+      size++;
       pt_off = 0;
 
       kprintf("Kernel PT table is full, creating new\n");
@@ -270,6 +356,7 @@ uint64_t* kernel_init(){
         kprintf("Kernel PD table is full, creating new \n");
         pd_off = 0;
         page = get_free_self__ref_page();
+        size++;
 
         kernel_page_info.pd = page;
         kernel_page_info.pd[pd_off++] =  ((uint64_t)kernel_page_info.pt|0x3);
@@ -284,7 +371,8 @@ uint64_t* kernel_init(){
           kprintf("Kernel PDP table is full, creating new\n");
           pdp_off = 0;
           page = get_free_self__ref_page();
-
+          size++;
+          
           kernel_page_info.pdp = page;
           kernel_page_info.pdp[pdp_off++] = ((uint64_t) kernel_page_info.pd|0x3);
 
@@ -297,17 +385,17 @@ uint64_t* kernel_init(){
     
   }
   
-  //move video buffer 0xb8000 to 0xFFFFFFFF9000000
+  //move video buffer 0xb8000 to 0xFFFFFFFF90000000
   uint64_t v_mem_address = 0xFFFFFFFF90000000;
   uint64_t v_mem_pd = get_pd(v_mem_address);
   uint64_t v_mem_pt = get_pt(v_mem_address);
   //kprintf("v_mem_pdp-> %x, v_mem_pd -> %x, v_mem_pt -> %x\n", v_mem_pdp, v_mem_pd, v_mem_pt);
 
-  uint64_t *page = get_free_page();
-  kernel_page_info.pt = page;
-  kernel_page_info.pd[v_mem_pd] = (uint64_t)kernel_page_info.pt | 0x3;
+  uint64_t *page = get_free_self__ref_page();
+  //kernel_page_info.pt = page;
+  kernel_page_info.pd[v_mem_pd] = (uint64_t)page | 0x3;
 
-  kernel_page_info.pt[v_mem_pt] = 0xb8000 | 0x3;
+  page[v_mem_pt] = 0xb8000 | 0x3;
 
 
   return kernel_page_info.pml4;    // to be set to CR3 :)
@@ -347,9 +435,47 @@ uint64_t get_pt(uint64_t kermem)
   return ((kermem >> shift) & mask);
 } 
 
+//updates the global pointers according to the new kernel address i.e., 0xffffffff80200000
 void  update_global_pointers(){
+  //update head according to new kernel address
   uint64_t va_temp = ((uint64_t)&kernmem - (uint64_t)&physbase + (uint64_t)head);
   head = (page_frame_t *)va_temp;
+
+  //update free pointer
   va_temp = ((uint64_t)&kernmem - (uint64_t)&physbase + (uint64_t)free_page);
   free_page = (page_frame_t *)va_temp;
+
+  //update page table pointers to be accessed for kmalloc
+  kernel_page_info.pml4 = (uint64_t *)((uint64_t)&kernmem - (uint64_t)&physbase + (uint64_t)kernel_page_info.pml4);
+  kernel_page_info.pdp = (uint64_t *)((uint64_t)&kernmem - (uint64_t)&physbase + (uint64_t)kernel_page_info.pdp);
+  kernel_page_info.pd = (uint64_t *)((uint64_t)&kernmem - (uint64_t)&physbase + (uint64_t)kernel_page_info.pd);
+  kernel_page_info.pt = (uint64_t *)((uint64_t)&kernmem - (uint64_t)&physbase + (uint64_t)kernel_page_info.pt);
+
+
+  //update the next and prev pointers of the free list
+  page_frame_t *va_free_page = free_page;
+  //update the next pointer of the first free element prev = NULL
+  va_free_page->next = (page_frame_t *)((uint64_t)&kernmem - (uint64_t)&physbase + (uint64_t)(va_free_page->next));
+  va_free_page++;
+  //update next and free of all the elements in between
+  while(va_free_page->next != NULL){
+    va_free_page->next = (page_frame_t *)((uint64_t)&kernmem - (uint64_t)&physbase + (uint64_t)(va_free_page->next));
+    va_free_page->prev = (page_frame_t *)((uint64_t)&kernmem - (uint64_t)&physbase + (uint64_t)(va_free_page->prev));
+    va_free_page++;
+  }
+  //update the prev pointer of the last free element next = NULL
+  va_free_page->prev = (page_frame_t *)((uint64_t)&kernmem - (uint64_t)&physbase + (uint64_t)(va_free_page->prev));
+
+  //reclaim pages between 0 and physbase
+  page_frame_t *reclaimed_pages;
+  for(int i=0; i<(uint64_t)&physbase/4096; i++){
+    reclaimed_pages = head + i;
+    if((reclaimed_pages->info & (uint64_t)0x3) == 1){
+      reclaimed_pages->info = 0;
+      va_free_page->next = (page_frame_t *)((uint64_t)&kernmem - (uint64_t)&physbase + (uint64_t)reclaimed_pages);
+      reclaimed_pages->prev = (page_frame_t *)((uint64_t)&kernmem - (uint64_t)&physbase + (uint64_t)va_free_page);
+      va_free_page = reclaimed_pages;
+    }
+  }
+  va_free_page->next = NULL;
 }

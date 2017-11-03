@@ -50,7 +50,7 @@ void main_task(){
     pcb_entries[free_pcb].cr3 = (uint64_t)kernel_cr3;
     pcb_entries[free_pcb].state = 0;
     pcb_entries[free_pcb].exit_status = -1;
-    pcb_entries[free_pcb].kstack = (uint64_t*)&thread_st;
+    pcb_entries[free_pcb].kstack = kmalloc(4096);
     pcb_entries[free_pcb].rsp = (uint64_t)(pcb_entries[free_pcb].kstack) + 0xF80;
 
     //kprintf("kstack of second thread kstack->%x rsp-> %x\n",pcb_entries[free_pcb].kstack,pcb_entries[free_pcb].rsp);

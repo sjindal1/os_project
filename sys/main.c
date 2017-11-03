@@ -19,6 +19,8 @@ void checkAllBuses(void);
 extern uint64_t free_virtual_address;
 void _x86_64_asm_pit_100ms();
 extern page_frame_t *free_page,*head;
+extern page_dir kernel_page_info;
+
 void start(uint32_t *modulep, void *physbase, void *physfree)
 {
   init_gdt();
@@ -51,10 +53,28 @@ void start(uint32_t *modulep, void *physbase, void *physfree)
   kprintf("tarfs in [%p:%p]\n", &_binary_tarfs_start, &_binary_tarfs_end);
   kprintf("free_virtual_address -> %x\n",free_virtual_address);
   main_task();
-  uint64_t *add = get_free_page();
-  kprintf("free Physical address %p\n",add);
-  free(add);
-  kprintf("free Physical address 2nd time%p\n",get_free_page());
+  uint64_t *add1 = get_free_page();
+  uint64_t *add2 = get_free_page();
+  kprintf("free Physical address %p, %p\n",add1, add2);
+  free(add1);
+  //free(add2);
+  uint64_t *addr_pages = get_free_pages(2);
+  uint64_t *add1_after = get_free_page();
+  uint64_t *add2_after = get_free_page();
+  uint64_t *add3_after = get_free_page();
+  free(addr_pages);
+  add1_after = get_free_page();
+  add2_after = get_free_pages(1);
+  kprintf("get free pages %p\n", addr_pages);
+  kprintf("free Physical address 2nd time %p %p %p\n",add1_after,add2_after,add3_after);
+  kprintf("page table entries %p %p %p %p\n", kernel_page_info.pml4, kernel_page_info.pdp, kernel_page_info.pd, kernel_page_info.pt);
+  uint64_t *pml4_table = (uint64_t *)kernel_page_info.pml4;
+  kprintf("pml4 va address - > %p, 511 entry -> %x, 510 entry->%x\n", pml4_table, pml4_table[511], pml4_table[510]);
+  uint64_t *km_add = kmalloc(16000);
+  for(int i=0;i<2010;i++){
+    km_add[i] = 0xDEADDEADDEADDEAD;
+  }
+  kprintf("km_add - > %p\n",km_add);
   //
   //checkAllBuses();
   /*init_pic();
