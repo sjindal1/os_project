@@ -18,6 +18,7 @@ uint64_t page_count;
 
 page_frame_t *head;
 extern char kernmem, physbase;
+extern uint64_t *kernel_cr3;
 
 page_dir kernel_page_info;
 
@@ -122,6 +123,18 @@ void create4KbPages(uint32_t *modulep,void *physbase, void *physfree){
   return;
 }
 
+void create_page_table_entry(uint64_t *physical_add, uint64_t no_of_pages , uint64_t virtual_add);
+
+uint64_t* get_free_self_ref_user_page(){
+  page_frame_t *t = free_page;
+  t->info = 1 | (uint64_t)1 << 32;
+  free_page = t->next;
+  create_page_table_entry(t->start, 1, 0xFFFFFFFF90001000); //Take care of infinite loop while changing address
+  uint64_t *temp = (uint64_t *)0xFFFFFFFF90001000;
+  temp[511] = (uint64_t)t->start | 0x3;
+  return t->start;
+}
+
 void create_page_table_entry(uint64_t *physical_add, uint64_t no_of_pages , uint64_t virtual_add){
 
   uint32_t pd_off_new = get_pd(virtual_add);
@@ -129,7 +142,7 @@ void create_page_table_entry(uint64_t *physical_add, uint64_t no_of_pages , uint
   
 
   if((((uint64_t)kernel_page_info.pd[pd_off_new])>>12) == 0){
-    uint64_t *page = get_free_self__ref_page();
+    uint64_t *page = get_free_self_ref_user_page();
     kernel_page_info.pd[pd_off_new] = (uint64_t)page | 0x3;
   }
 
@@ -146,7 +159,7 @@ void create_page_table_entry(uint64_t *physical_add, uint64_t no_of_pages , uint
     }
     else // pt table is full
     {
-      uint64_t *page = get_free_self__ref_page();
+      uint64_t *page = get_free_self_ref_user_page();
       pt_off_new = 0;
       kernel_page_info.pd[++pd_off_new] = (uint64_t)page | 0x3;
       kprintf("Kernel PT table is full, creating new\n");
@@ -156,9 +169,12 @@ void create_page_table_entry(uint64_t *physical_add, uint64_t no_of_pages , uint
   }
 }
 
-uint64_t* kmalloc(uint64_t size){
+uint64_t* kmalloc(uint64_t size, uint64_t *pa_add){
   uint32_t no_of_pages = (size + 4095)/4096;
   uint64_t *start_add = get_free_pages(no_of_pages);
+  if(pa_add != NULL){
+    *pa_add = *start_add;
+  }
   create_page_table_entry(start_add,no_of_pages,heap_start);
   heap_start = heap_start + no_of_pages*4096;
   return (uint64_t *)(heap_start - no_of_pages*4096);
@@ -478,4 +494,97 @@ void  update_global_pointers(){
     }
   }
   va_free_page->next = NULL;
+}
+
+
+uint64_t* create_user_page_table(uint64_t va_func,uint64_t pa_func,uint32_t no_of_pages){
+
+  page_dir user_page_info;
+
+  //alot pages for page tables and include these in the kernel for future access
+  user_page_info.pml4 = get_free_self_ref_user_page();
+  user_page_info.pdp = get_free_self_ref_user_page();
+  user_page_info.pd = get_free_self_ref_user_page();
+  user_page_info.pt = get_free_self_ref_user_page();
+
+  create_page_table_entry(user_page_info.pml4, 1, 0xFFFFFFFF90002000);
+  create_page_table_entry(user_page_info.pdp, 1, 0xFFFFFFFF90003000);
+  create_page_table_entry(user_page_info.pd, 1, 0xFFFFFFFF90004000);
+  create_page_table_entry(user_page_info.pt, 1, 0xFFFFFFFF90005000);
+  
+  uint64_t *va_pml4 = (uint64_t *)(0xFFFFFFFF90002000);
+  uint64_t *va_pdp = (uint64_t *)(0xFFFFFFFF90004000);
+  uint64_t *va_pd = (uint64_t *)(0xFFFFFFFF90003000);
+  uint64_t *va_pt = (uint64_t *)(0xFFFFFFFF90005000);
+
+  uint64_t pml4_off = get_pml4(va_func);
+  va_pml4[pml4_off] = (uint64_t)user_page_info.pdp | 0x3;
+  va_pml4[511] = (uint64_t)kernel_cr3 | 0x3; // mapping the kernel in higher address.
+
+  uint64_t pdp_off = get_pdp(va_func);
+  va_pdp[pdp_off] = (uint64_t)user_page_info.pd | 0x3;
+
+  uint64_t pd_off = get_pd(va_func);
+  va_pd[pd_off] = (uint64_t)user_page_info.pt | 0x3;
+
+  uint64_t pt_off = get_pt(va_func);
+
+  uint64_t curkermem = pa_func;
+  for(uint64_t j=0;j<no_of_pages;j++){
+    if(pt_off < 512)
+    {
+      /*if(j < 10)
+        kprintf("j = %d, pt_off = %d, kmst = %x, kmend = %x\n", j, pt_off, curkermem, curkermem + 4096);*/
+      va_pt[pt_off++] = (curkermem|0x3);
+      curkermem += 4096;
+    }
+    else // pt table is full
+    {
+      uint64_t *page = get_free_self_ref_user_page();
+      create_page_table_entry(page, 1, 0xFFFFFFFF90005000);
+      pt_off = 0;
+
+      kprintf("Kernel PT table is full, creating new\n");
+      user_page_info.pt = page;
+      va_pt[pt_off++] = (curkermem|0x3);
+      curkermem += 4096;
+
+      //add a pd entry
+      if(++pd_off < 512)
+      {
+        va_pd[pd_off] = ((uint64_t)user_page_info.pt|0x3);
+      }
+      else  // pd table is full
+      {
+        kprintf("Kernel PD table is full, creating new \n");
+        pd_off = 0;
+        page = get_free_self_ref_user_page();
+        create_page_table_entry(page, 1, 0xFFFFFFFF90004000);
+
+        user_page_info.pd = page;
+        va_pd[pd_off++] =  ((uint64_t)user_page_info.pt|0x3);
+
+        //add a new pdp entry
+        if(++pdp_off < 512)
+        {
+          va_pdp[pdp_off] = ((uint64_t)user_page_info.pd|0x3);
+        }
+        else  // pdp table is full
+        {
+          kprintf("Kernel PDP table is full, creating new\n");
+          pdp_off = 0;
+          page = get_free_self_ref_user_page();
+          create_page_table_entry(page, 1, 0xFFFFFFFF90003000);
+          
+          user_page_info.pdp = page;
+          va_pdp[pdp_off++] = ((uint64_t) user_page_info.pd|0x3);
+
+          //add a new pml4 entry
+          va_pml4[pml4_off++] = ((uint64_t) user_page_info.pdp|0x3);
+        }
+
+      }
+    }
+  }
+  return user_page_info.pml4;
 }

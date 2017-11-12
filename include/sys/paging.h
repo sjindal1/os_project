@@ -3,6 +3,8 @@
 
 #define HEAP_START_ADD 0xFFFFFFFF90010000;
 
+extern char kernmem, physbase;
+
 void create4KbPages(uint32_t *modulep,void *physbase, void *physfree);
 
 uint64_t* get_free_page();
@@ -19,7 +21,9 @@ uint64_t* get_free_self__ref_page();
 
 uint64_t* kernel_init();
 
-uint64_t* kmalloc(uint64_t size);
+uint64_t* kmalloc(uint64_t size, uint64_t*);
+
+uint64_t* create_user_page_table(uint64_t va_func,uint64_t pa_func,uint32_t no_of_pages);
 
 typedef struct page_dir page_dir;
 

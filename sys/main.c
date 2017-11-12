@@ -70,7 +70,7 @@ void start(uint32_t *modulep, void *physbase, void *physfree)
   kprintf("page table entries %p %p %p %p\n", kernel_page_info.pml4, kernel_page_info.pdp, kernel_page_info.pd, kernel_page_info.pt);
   uint64_t *pml4_table = (uint64_t *)kernel_page_info.pml4;
   kprintf("pml4 va address - > %p, 511 entry -> %x, 510 entry->%x\n", pml4_table, pml4_table[511], pml4_table[510]);
-  uint64_t *km_add = kmalloc(16000);
+  uint64_t *km_add = kmalloc(16000, NULL);
   for(int i=0;i<2010;i++){
     km_add[i] = 0xDEADDEADDEADDEAD;
   }

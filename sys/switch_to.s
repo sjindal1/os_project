@@ -22,6 +22,9 @@ switch_to:
 	pushq %r14;
 	pushq %r15;
 
+	movq %cr3, %rax;
+	pushq %rax;
+
 	//pushq %rip;					// pushing the program counter
 	pushfq;						// push the eflags/rflags
 
@@ -34,6 +37,9 @@ switch_to:
     // restore the registers according to the new stack
 	popfq; 						// pop the eflags/rflags
 	//popq %rip; 					// pop the program counter
+
+	popq %rax;
+	movq %rax, %cr3;
 
 	popq %r15;
 	popq %r14;
