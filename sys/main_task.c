@@ -6,7 +6,9 @@
 extern uint64_t *kernel_cr3;
 
 void kernel_1_thread();
+void kernel_2_thread();
 void yeild();
+void switch_out(pcb*);
 void switch_to(pcb* , pcb*);
 void user_process_init(uint64_t *func_add, uint32_t no_of_pages);
 void user_process_1();
@@ -37,17 +39,10 @@ uint64_t get_rflags_asm()
 	return rflags;
 }
 
-void main_task(){
-	uint64_t *tmp;
-	//setting main task PCB
-  pcb_entries[free_pcb].pid = free_pcb;
-  pcb_entries[free_pcb].cr3 = (uint64_t)kernel_cr3;
-  pcb_entries[free_pcb].state = 0;
-  pcb_entries[free_pcb].exit_status = -1;
-  free_pcb++;
-  no_of_task++;
-  
-  //Kernel Thread 1 PCB
+void create_kernel_thread(uint64_t* func_ptr){
+  uint64_t *tmp;
+
+  //Kernel Thread PCB
   pcb_entries[free_pcb].pid = free_pcb;
   pcb_entries[free_pcb].cr3 = (uint64_t)kernel_cr3;
   pcb_entries[free_pcb].state = 0;
@@ -62,12 +57,12 @@ void main_task(){
   // set structures of reg = 0;
   tmp = (uint64_t*) pcb_entries[free_pcb].rsp;
   //push the start address of thread
-  *tmp-- = (uint64_t) &kernel_1_thread;
+  *tmp-- = (uint64_t) func_ptr;
   pcb_entries[free_pcb].rsp -= 8;
   for(int i = 14; i > 0; i--)
   {
-  	*(tmp--) = 0;
-  	pcb_entries[free_pcb].rsp -= 8;
+    *(tmp--) = 0;
+    pcb_entries[free_pcb].rsp -= 8;
   }
 
   //push cr3 onto the stack
@@ -76,25 +71,34 @@ void main_task(){
   uint64_t rflags = get_rflags_asm();
   *tmp-- = rflags;
   *tmp-- = (uint64_t)&pcb_entries[free_pcb];
-  pcb_entries[free_pcb].rsp -= 16;		// finaly value of RSP
+  pcb_entries[free_pcb].rsp -= 16;    // finaly value of RSP
   
   //kprintf("rsp after i have Initialize process 2 -> %x\n",pcb_entries[free_pcb].rsp);
 
-	// update the pcb structure
+  // update the pcb structure
   free_pcb++;
   no_of_task++;
+}
 
-  uint64_t func_ptr = (uint64_t)&user_process_1;
-	//user process init
-  user_process_init((uint64_t*)func_ptr,1);
+void main_task(){
+	//setting main task PCB
+  /*pcb_entries[free_pcb].pid = free_pcb;
+  pcb_entries[free_pcb].cr3 = (uint64_t)kernel_cr3;
+  pcb_entries[free_pcb].state = 0;
+  pcb_entries[free_pcb].exit_status = -1;
+  free_pcb++;
+  no_of_task++;*/
+  
+  create_kernel_thread((uint64_t *)&kernel_2_thread);
+  create_kernel_thread((uint64_t *)&kernel_1_thread);
 
-  int j=0;
-	while(j<2){
+  //int j=0;
+	//while(j<2){
     kprintf("This is the main_task of kernel thread\n");
-    j++;
-    yeild();
+    //j++;
+    switch_out(&pcb_entries[current_process]);
     kprintf("returning to main thread\n");
-	}  
+	//}  
 
 	return;
 }
@@ -141,9 +145,11 @@ void create_pcb_stack(uint64_t *user_cr3,uint64_t va_func){
 void user_process_init(uint64_t *func_add, uint32_t no_of_pages){
 	uint64_t pa_func = ((uint64_t)func_add - (uint64_t)&kernmem + (uint64_t)&physbase);
 	pa_func = pa_func & (uint64_t)0xFFFFFFFFFFFFF000;
-	uint64_t va_func = 0x100000;
-	uint64_t* user_cr3 = create_user_page_table(va_func,pa_func,no_of_pages);
+	uint64_t va_func = 0xFFFFFEFF20000000;
+  pa_func-=4096;
+	uint64_t* user_cr3 = create_user_page_table(va_func,pa_func,3);
 	va_func = va_func | ((uint64_t)func_add & (uint64_t)0xfff);
+  va_func+=4096;
 	create_pcb_stack(user_cr3,va_func);
 }
 
@@ -157,12 +163,31 @@ void user_process_1(){
 }
 
 void kernel_1_thread(){
-  //int j = 0;
-  while(1){
+  int j = 0;
+  while(j<2){
+    j++;
     kprintf("This is the first kernel thread\n");
+    //user process init
+    //uint64_t func_ptr = (uint64_t)&user_process_1;
+    //user_process_init((uint64_t*)func_ptr,1);
     yeild();
     kprintf("returning to kernel_1_thread\n");
   }
+  while(1){};
+}
+
+void kernel_2_thread(){
+  int j = 0;
+  while(j<2){
+    j++;
+    kprintf("This is the second kernel thread\n");
+    //user process init
+    /*uint64_t func_ptr = (uint64_t)&user_process_1;
+    user_process_init((uint64_t*)func_ptr,1);*/
+    yeild();
+    kprintf("returning to kernel_2_thread\n");
+  }
+  while(1){};
 }
 
 void yeild(){
@@ -171,7 +196,7 @@ void yeild(){
   if(no_of_task == 1){
   	return;
   }
-  if(current_process+1 == no_of_task){
+  else if(current_process+1 == no_of_task){
     next = &pcb_entries[0];
     current_process = 0;
   }else{

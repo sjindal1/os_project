@@ -513,9 +513,14 @@ uint64_t* create_user_page_table(uint64_t va_func,uint64_t pa_func,uint32_t no_o
   create_page_table_entry(user_page_info.pt, 1, 0xFFFFFFFF90005000);
   
   uint64_t *va_pml4 = (uint64_t *)(0xFFFFFFFF90002000);
-  uint64_t *va_pdp = (uint64_t *)(0xFFFFFFFF90004000);
-  uint64_t *va_pd = (uint64_t *)(0xFFFFFFFF90003000);
+  uint64_t *va_pdp = (uint64_t *)(0xFFFFFFFF90003000);
+  uint64_t *va_pd = (uint64_t *)(0xFFFFFFFF90004000);
   uint64_t *va_pt = (uint64_t *)(0xFFFFFFFF90005000);
+
+  clear_page(va_pml4);
+  clear_page(va_pdp);
+  clear_page(va_pd);
+  clear_page(va_pt);
 
   uint64_t pml4_off = get_pml4(va_func);
   va_pml4[pml4_off] = (uint64_t)user_page_info.pdp | 0x3;
