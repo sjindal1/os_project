@@ -41,4 +41,12 @@ struct page_frame_t{
   uint64_t info;
 }__attribute__((packed));
 
+#define _PB 		0x1
+#define _WB			0x2
+#define _UB			0x4
+
+//#define KERNPAG		((_PB)|(_WB))
+#define KERNPAG   ((_PB)|(_WB)|(_UB))
+#define USERPAG   ((_PB)|(_WB)|(_UB))
+
 #endif

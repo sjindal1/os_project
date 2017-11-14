@@ -131,7 +131,7 @@ uint64_t* get_free_self_ref_user_page(){
   free_page = t->next;
   create_page_table_entry(t->start, 1, 0xFFFFFFFF90001000); //Take care of infinite loop while changing address
   uint64_t *temp = (uint64_t *)0xFFFFFFFF90001000;
-  temp[511] = (uint64_t)t->start | 0x3;
+  temp[511] = (uint64_t)t->start | KERNPAG;
   return t->start;
 }
 
@@ -143,7 +143,7 @@ void create_page_table_entry(uint64_t *physical_add, uint64_t no_of_pages , uint
 
   if((((uint64_t)kernel_page_info.pd[pd_off_new])>>12) == 0){
     uint64_t *page = get_free_self_ref_user_page();
-    kernel_page_info.pd[pd_off_new] = (uint64_t)page | 0x3;
+    kernel_page_info.pd[pd_off_new] = (uint64_t)page | KERNPAG;
   }
 
   uint64_t *pt_address = (uint64_t *)((virtual_add & 0xFFFFFFFFFFE00000) | (uint64_t)0x1ff<<12 ) ;
@@ -154,16 +154,16 @@ void create_page_table_entry(uint64_t *physical_add, uint64_t no_of_pages , uint
     {
       /*if(j < 10)
         kprintf("j = %d, pt_off = %d, kmst = %x, kmend = %x\n", j, pt_off, curkermem, curkermem + 4096);*/
-      pt_address[pt_off_new++] = (curkermem|0x3);
+      pt_address[pt_off_new++] = (curkermem|KERNPAG);
       curkermem += 4096;
     }
     else // pt table is full
     {
       uint64_t *page = get_free_self_ref_user_page();
       pt_off_new = 0;
-      kernel_page_info.pd[++pd_off_new] = (uint64_t)page | 0x3;
+      kernel_page_info.pd[++pd_off_new] = (uint64_t)page | KERNPAG;
       kprintf("Kernel PT table is full, creating new\n");
-      pt_address[pt_off_new++] = (curkermem|0x3);
+      pt_address[pt_off_new++] = (curkermem|KERNPAG);
       curkermem += 4096;
     } 
   }
@@ -193,7 +193,7 @@ uint64_t* get_free_self__ref_page(){
   page_frame_t *t = free_page;
   t->info = 1 | (uint64_t)1 << 32;
   free_page = t->next;
-  t->start[511] = (uint64_t)t->start | 0x3;
+  t->start[511] = (uint64_t)t->start | KERNPAG;
   return t->start;
 }
 
@@ -325,21 +325,21 @@ uint64_t* kernel_init(){
   /*if(pml4_off == 511)
     kernel_page_info.pdp = kernel_page_info.pml4;
   else
-    kernel_page_info.pml4[pml4_off] = (uint64_t)kernel_page_info.pdp | 0x3;
+    kernel_page_info.pml4[pml4_off] = (uint64_t)kernel_page_info.pdp | KERNPAG;
 */
   //PDP setting
   // so PDP offset is 510 ~ 0x1fe, set others to zero
   /*if(pdp_off == 511)
     kernel_page_info.pd = kernel_page_info.pdp;
   else*/
-  kernel_page_info.pdp[pdp_off] = (uint64_t)kernel_page_info.pd | 0x3;
+  kernel_page_info.pdp[pdp_off] = (uint64_t)kernel_page_info.pd | KERNPAG;
 
   //PD setting
   // so PD offset is 1 ~ 0x1, set others to zero
   /*if(pd_off == 511)
     kernel_page_info.pt = kernel_page_info.pd;
   else*/
-  kernel_page_info.pd[pd_off] = (uint64_t)kernel_page_info.pt | 0x3;
+  kernel_page_info.pd[pd_off] = (uint64_t)kernel_page_info.pt | KERNPAG;
 
   size /= 4096;
   uint64_t curkermem = (uint64_t) &physbase;
@@ -348,7 +348,7 @@ uint64_t* kernel_init(){
     {
       /*if(j < 10)
         kprintf("j = %d, pt_off = %d, kmst = %x, kmend = %x\n", j, pt_off, curkermem, curkermem + 4096);*/
-      kernel_page_info.pt[pt_off++] = (curkermem|0x3);
+      kernel_page_info.pt[pt_off++] = (curkermem|KERNPAG);
       curkermem += 4096;
     }
     else // pt table is full
@@ -359,13 +359,13 @@ uint64_t* kernel_init(){
 
       kprintf("Kernel PT table is full, creating new\n");
       kernel_page_info.pt = page;
-      kernel_page_info.pt[pt_off++] = (curkermem|0x3);
+      kernel_page_info.pt[pt_off++] = (curkermem|KERNPAG);
       curkermem += 4096;
 
       //add a pd entry
       if(++pd_off < 512)
       {
-        kernel_page_info.pd[pd_off] = ((uint64_t)kernel_page_info.pt|0x3);
+        kernel_page_info.pd[pd_off] = ((uint64_t)kernel_page_info.pt|KERNPAG);
       }
       else  // pd table is full
       {
@@ -375,12 +375,12 @@ uint64_t* kernel_init(){
         size++;
 
         kernel_page_info.pd = page;
-        kernel_page_info.pd[pd_off++] =  ((uint64_t)kernel_page_info.pt|0x3);
+        kernel_page_info.pd[pd_off++] =  ((uint64_t)kernel_page_info.pt|KERNPAG);
 
         //add a new pdp entry
         if(++pdp_off < 512)
         {
-          kernel_page_info.pdp[pdp_off] = ((uint64_t)kernel_page_info.pd|0x3);
+          kernel_page_info.pdp[pdp_off] = ((uint64_t)kernel_page_info.pd|KERNPAG);
         }
         else  // pdp table is full
         {
@@ -390,10 +390,10 @@ uint64_t* kernel_init(){
           size++;
           
           kernel_page_info.pdp = page;
-          kernel_page_info.pdp[pdp_off++] = ((uint64_t) kernel_page_info.pd|0x3);
+          kernel_page_info.pdp[pdp_off++] = ((uint64_t) kernel_page_info.pd|KERNPAG);
 
           //add a new pml4 entry
-          kernel_page_info.pml4[pml4_off++] = ((uint64_t) kernel_page_info.pdp|0x3);
+          kernel_page_info.pml4[pml4_off++] = ((uint64_t) kernel_page_info.pdp|KERNPAG);
         }
 
       }
@@ -409,9 +409,9 @@ uint64_t* kernel_init(){
 
   uint64_t *page = get_free_self__ref_page();
   //kernel_page_info.pt = page;
-  kernel_page_info.pd[v_mem_pd] = (uint64_t)page | 0x3;
+  kernel_page_info.pd[v_mem_pd] = (uint64_t)page | KERNPAG;
 
-  page[v_mem_pt] = 0xb8000 | 0x3;
+  page[v_mem_pt] = 0xb8000 | KERNPAG;
 
 
   return kernel_page_info.pml4;    // to be set to CR3 :)
@@ -523,14 +523,14 @@ uint64_t* create_user_page_table(uint64_t va_func,uint64_t pa_func,uint32_t no_o
   clear_page(va_pt);
 
   uint64_t pml4_off = get_pml4(va_func);
-  va_pml4[pml4_off] = (uint64_t)user_page_info.pdp | 0x3;
-  va_pml4[511] = (uint64_t)kernel_cr3 | 0x3; // mapping the kernel in higher address.
+  va_pml4[pml4_off] = (uint64_t)user_page_info.pdp | KERNPAG;
+  va_pml4[511] = (uint64_t)kernel_cr3 | KERNPAG; // mapping the kernel in higher address.
 
   uint64_t pdp_off = get_pdp(va_func);
-  va_pdp[pdp_off] = (uint64_t)user_page_info.pd | 0x3;
+  va_pdp[pdp_off] = (uint64_t)user_page_info.pd | KERNPAG;
 
   uint64_t pd_off = get_pd(va_func);
-  va_pd[pd_off] = (uint64_t)user_page_info.pt | 0x3;
+  va_pd[pd_off] = (uint64_t)user_page_info.pt | KERNPAG;
 
   uint64_t pt_off = get_pt(va_func);
 
@@ -540,7 +540,7 @@ uint64_t* create_user_page_table(uint64_t va_func,uint64_t pa_func,uint32_t no_o
     {
       /*if(j < 10)
         kprintf("j = %d, pt_off = %d, kmst = %x, kmend = %x\n", j, pt_off, curkermem, curkermem + 4096);*/
-      va_pt[pt_off++] = (curkermem|0x3);
+      va_pt[pt_off++] = (curkermem|KERNPAG);
       curkermem += 4096;
     }
     else // pt table is full
@@ -551,13 +551,13 @@ uint64_t* create_user_page_table(uint64_t va_func,uint64_t pa_func,uint32_t no_o
 
       kprintf("Kernel PT table is full, creating new\n");
       user_page_info.pt = page;
-      va_pt[pt_off++] = (curkermem|0x3);
+      va_pt[pt_off++] = (curkermem|KERNPAG);
       curkermem += 4096;
 
       //add a pd entry
       if(++pd_off < 512)
       {
-        va_pd[pd_off] = ((uint64_t)user_page_info.pt|0x3);
+        va_pd[pd_off] = ((uint64_t)user_page_info.pt|KERNPAG);
       }
       else  // pd table is full
       {
@@ -567,12 +567,12 @@ uint64_t* create_user_page_table(uint64_t va_func,uint64_t pa_func,uint32_t no_o
         create_page_table_entry(page, 1, 0xFFFFFFFF90004000);
 
         user_page_info.pd = page;
-        va_pd[pd_off++] =  ((uint64_t)user_page_info.pt|0x3);
+        va_pd[pd_off++] =  ((uint64_t)user_page_info.pt|KERNPAG);
 
         //add a new pdp entry
         if(++pdp_off < 512)
         {
-          va_pdp[pdp_off] = ((uint64_t)user_page_info.pd|0x3);
+          va_pdp[pdp_off] = ((uint64_t)user_page_info.pd|KERNPAG);
         }
         else  // pdp table is full
         {
@@ -582,10 +582,10 @@ uint64_t* create_user_page_table(uint64_t va_func,uint64_t pa_func,uint32_t no_o
           create_page_table_entry(page, 1, 0xFFFFFFFF90003000);
           
           user_page_info.pdp = page;
-          va_pdp[pdp_off++] = ((uint64_t) user_page_info.pd|0x3);
+          va_pdp[pdp_off++] = ((uint64_t) user_page_info.pd|KERNPAG);
 
           //add a new pml4 entry
-          va_pml4[pml4_off++] = ((uint64_t) user_page_info.pdp|0x3);
+          va_pml4[pml4_off++] = ((uint64_t) user_page_info.pdp|KERNPAG);
         }
 
       }

@@ -7,16 +7,16 @@
 
 _x86_64_isr:
   pushf
-  cli
+  //cli
   jmp _call_print 
-  sti
+  //sti
   popf
   iretq
 
 _call_print:
   call timer_print
 
-  sti
+  //sti
   popf
   iretq
 

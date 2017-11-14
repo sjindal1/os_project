@@ -2,6 +2,7 @@
 
 .global switch_to
 .global switch_out
+.global switch_to_ring3
 
 switch_to:
 	// pushing all general purpose registers
@@ -93,3 +94,22 @@ switch_out:
 
 	retq;
 
+switch_to_ring3:
+	cli;
+	mov $0x23, %ax;  
+	mov %ax, %ds; 
+	mov %ax, %es;  
+	mov %ax, %fs;  
+	mov %ax, %gs;  
+	              
+	//mov %rsp, %rax;  
+	pushq $0x23;  
+	//pushq %rax; 
+	pushq %rsi; 
+	pushfq;  
+	popq %rax;
+	orq $0x200, %rax;
+	push %rax;
+	pushq $0x1B;  
+	pushq %rdi;  
+	iretq;  

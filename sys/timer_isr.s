@@ -10,7 +10,7 @@ count:
 
 _x86_64_timer_isr:
   pushf
-  cli
+  //cli
   // pushing all general purpose registers
 	pushq %rax;
 	pushq %rbx;
@@ -52,7 +52,7 @@ _x86_64_timer_isr:
 	popq %rbx;
 	popq %rax;
 	
-  sti
+  //sti
   popf
   iretq
 
