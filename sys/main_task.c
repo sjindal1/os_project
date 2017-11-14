@@ -16,6 +16,9 @@ void user_process_init(uint64_t *func_add, uint32_t no_of_pages);
 void create_user_ring3_kernel_thread(uint64_t* func_ptr);
 void user_process_1();
 
+void rdmsr_read(uint32_t);
+void wrmsr_write(uint32_t, uint32_t, uint32_t);
+
 pcb pcb_entries[1024];
 uint64_t thread_st[512];
 int free_pcb=0;
@@ -83,6 +86,11 @@ void create_kernel_thread(uint64_t* func_ptr){
   no_of_task++;
 }
 
+void syscall_handle(){
+  kprintf("syscall_handle\n");
+  while(1){};
+}
+
 void wrmsr(uint32_t msrid, uint64_t msr_value){
   __asm__ __volatile__ ("wrmsr": : "c" (msrid), "A" (msr_value));
 }
@@ -94,12 +102,23 @@ uint64_t rdmsr(uint32_t msrid){
 }
 
 void init_syscalls(){
-  wrmsr(0xC0000082, 0xFFFFFF0000082);
+  /*wrmsr(0xC0000081, ((uint64_t)0x1b)<<48  | ((uint64_t)0x8)<<32);
+  wrmsr(0xC0000082, (uint64_t)&syscall_handle);
   uint64_t star = rdmsr(0xC0000081);
   uint64_t lstar = rdmsr(0xC0000082);
   uint64_t cstar = rdmsr(0xC0000083);
-  uint64_t sfmask = rdmsr(0xC0000084);
-  kprintf("star -> %x, lstar -> %x, cstar -> %x, sfmask -> %x\n", star, lstar, cstar, sfmask);
+  uint64_t sfmask = rdmsr(0xC0000084);*/
+  uint64_t t = (uint64_t) &syscall_handle;
+  uint32_t t32 = (uint32_t) (t>>32);
+  //wrmsr_write(0xc0000081, 0, 0x231b1008);
+  wrmsr_write(0xc0000081, 0, 0xf0f89098);
+  /*uint32_t start_val = ((uint32_t)__KERNEL_CS <<16 | (uint32_t)__USER32_CS);
+  wrmsr_write(0xc0000081, 0, start_val);*/
+  wrmsr_write(0xc0000082, t32, 0xffffffff);
+  rdmsr_read(0xc0000081);
+  rdmsr_read(0xc0000082);
+
+  //kprintf("star -> %x, lstar -> %x, cstar -> %x, sfmask -> %x\n", star, lstar, cstar, sfmask);
 }
 
 void main_task(){
@@ -188,6 +207,14 @@ void user_process_1(){
 
 void user_ring3_process() {
   kprintf("This is ring 3 user process 1\n");
+  //uint64_t __err;
+  /*__asm__ __volatile__ ("movq $0, %%rdi\n\t"
+                        "movq $0, %%rsi\n\t"
+                        "movq $0, %%rax\n\t"
+                        "syscall\n\t"
+                        :"=a"(__err)
+                        :"0" (57));*/
+  __asm__ __volatile__ ("syscall\n\t");
   while(1){};
   //yeild();
   /*while(1) {

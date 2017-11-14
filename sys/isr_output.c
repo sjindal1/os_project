@@ -1,5 +1,3 @@
-
-
 #include <sys/defs.h>
 #include <sys/kprintf.h>
 
@@ -27,6 +25,16 @@ void timer_print()
     timer_counter--;
   }
     return;
+}
+
+void int_print()
+{
+  kprintf("interrupt occurs");
+}
+
+void int_32_print()
+{
+  kprintf("one of the fisrt 6 interrupt occured");
 }
 
 void print_time(int time){

@@ -3,6 +3,8 @@
 .global switch_to
 .global switch_out
 .global switch_to_ring3
+.global rdmsr_read
+.global wrmsr_write
 
 switch_to:
 	// pushing all general purpose registers
@@ -100,7 +102,8 @@ switch_to_ring3:
 	mov %ax, %ds; 
 	mov %ax, %es;  
 	mov %ax, %fs;  
-	mov %ax, %gs;  
+	mov %ax, %gs;
+	//mov %ax, %ss;  
 	              
 	//mov %rsp, %rax;  
 	pushq $0x23;  
@@ -113,3 +116,16 @@ switch_to_ring3:
 	pushq $0x1B;  
 	pushq %rdi;  
 	iretq;  
+
+rdmsr_read:
+	mov %edi, %ecx;
+	rdmsr;
+	ret;
+
+wrmsr_write: 
+	mov %edi, %ecx;
+
+	mov %esi, %eax;
+	wrmsr;
+	ret;
+
