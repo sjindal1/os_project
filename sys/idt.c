@@ -11,6 +11,9 @@ void _x86_64_isr();
 
 void _x86_64_isr_32();
 
+void _x86_64_isr_6();
+
+
 struct idt_descriptor {
   uint16_t offset_1;
   uint16_t selector;
@@ -33,6 +36,7 @@ struct idt_descriptor idt[MAX_IDT];
 static struct idtr_t idtr = { (sizeof(struct idt_descriptor) * MAX_IDT) -1, (uint64_t)idt };
 
 void init_idt(){
+  uint64_t isr_point_6 = (uint64_t)&_x86_64_isr_6;
   uint64_t isr_point_32 = (uint64_t)&_x86_64_isr_32;
   uint64_t isr_point = (uint64_t)&_x86_64_isr;
   uint64_t isr_timer_point = (uint64_t)&_x86_64_timer_isr;
@@ -45,6 +49,9 @@ void init_idt(){
     struct idt_descriptor *idt_element = &idt[i];
     set_idt_values(isr_point, 0x08, 0x8E, idt_element);
   }
+
+  struct idt_descriptor *idt_element = &idt[6];
+  set_idt_values(isr_point_6, 0x08, 0x8E, idt_element);
 
   struct idt_descriptor *timer = &idt[32];
   set_idt_values(isr_timer_point, 0x08, 0x8E, timer);

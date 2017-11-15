@@ -3,6 +3,9 @@
 #include <sys/kernel.h>
 #include <sys/paging.h>
 #include <sys/gdt.h>
+#include <sys/tarfs.h>
+
+typedef struct posix_header_ustar posix_header_ustar;
 
 extern uint64_t *kernel_cr3;
 
@@ -86,39 +89,83 @@ void create_kernel_thread(uint64_t* func_ptr){
   no_of_task++;
 }
 
-void syscall_handle(){
-  kprintf("syscall_handle\n");
-  while(1){};
-}
+
 
 void wrmsr(uint32_t msrid, uint64_t msr_value){
-  __asm__ __volatile__ ("wrmsr": : "c" (msrid), "A" (msr_value));
+  uint32_t msr_value_lo = (uint32_t) msr_value;
+  uint32_t msr_value_hi = (uint32_t) (msr_value>>32);
+  __asm__ __volatile__ ("wrmsr": : "c" (msrid), "a" (msr_value_lo), "d"(msr_value_hi));
 }
 
 uint64_t rdmsr(uint32_t msrid){
-  uint64_t msr_value;
-  __asm__ __volatile__ ("rdmsr": "=A" (msr_value) : "c" (msrid));
-  return msr_value;
+  uint64_t msr_value_lo;
+  uint64_t msr_value_hi;
+  __asm__ __volatile__ ("rdmsr": "=a" (msr_value_lo), "=d" (msr_value_hi): "c" (msrid));
+  return (uint64_t)(msr_value_hi<<32) | (uint64_t)msr_value_lo;
+}
+
+
+
+void syscall_handle(){
+  __asm__ __volatile__ ("pushq %r15\n\t"
+                        "pushq %rbx\n\t"
+                        "movq %rax, %r15\n\t");
+  uint64_t user_rsp, user_rcx, user_r11;
+  uint64_t kernel_rsp = (&pcb_entries[current_process])->rsp;
+  uint32_t syscall_num;
+  //save the user stack into rax and load kernel stack
+  __asm__ __volatile__ ("movq %%rsp, %%rbx\n\t"
+                        "movq %0, %%rsp\n\t"
+                        :
+                        :"m"(kernel_rsp)
+                        :"rbx");
+  //save the user stack,rip and rflags that are stored in rbx, rcx and r11 respectively
+  __asm__ __volatile__ ("movq %%rbx, %0\n\t"
+                        "movq %%rcx, %1\n\t"
+                        "movq %%r11, %2\n\t"
+                        "movq %%r15, %3\n\t"
+                        :"=m"(user_rsp), "=m"(user_rcx), "=m"(user_r11), "=m"(syscall_num)
+                        :
+                        :"rbx","rcx","r11","rax");
+
+  kprintf("syscall handler\n");
+
+  kprintf("syscall_num -> %d\n", syscall_num);
+
+  yeild();
+
+  //restore the stack,rip and rflags that are stored in rbx, rcx and r11 respectively
+  __asm__ __volatile__ ("movq %1, %%rcx\n\t"
+                        "movq %2, %%r11\n\t"
+                        "movq %0, %%rsp\n\t"
+                        "popq %%rbx\n\t"
+                        "popq %%r15\n\t"
+                        :
+                        :"m"(user_rsp), "m"(user_rcx), "m"(user_r11)
+                        :"rcx","r11");
+  __asm__ __volatile__ ("sysretq\n\t");
 }
 
 void init_syscalls(){
-  /*wrmsr(0xC0000081, ((uint64_t)0x1b)<<48  | ((uint64_t)0x8)<<32);
+  wrmsr(0xC0000081, ((uint64_t)0x1b)<<48  | ((uint64_t)0x8)<<32);
   wrmsr(0xC0000082, (uint64_t)&syscall_handle);
+  uint64_t efer = rdmsr(0xC0000080);
+  wrmsr(0xC0000080, (uint64_t)(efer|0x1));
   uint64_t star = rdmsr(0xC0000081);
   uint64_t lstar = rdmsr(0xC0000082);
   uint64_t cstar = rdmsr(0xC0000083);
-  uint64_t sfmask = rdmsr(0xC0000084);*/
-  uint64_t t = (uint64_t) &syscall_handle;
+  uint64_t sfmask = rdmsr(0xC0000084);
+  /*uint64_t t = (uint64_t) &syscall_handle;
   uint32_t t32 = (uint32_t) (t>>32);
   //wrmsr_write(0xc0000081, 0, 0x231b1008);
-  wrmsr_write(0xc0000081, 0, 0x231b1008);
-  /*uint32_t start_val = ((uint32_t)__KERNEL_CS <<16 | (uint32_t)__USER32_CS);
-  wrmsr_write(0xc0000081, 0, start_val);*/
-  wrmsr_write(0xc0000082, t32, 0xffffffff);
-  rdmsr_read(0xc0000081);
-  rdmsr_read(0xc0000082);
+  wrmsr_write(0xC0000081, 0, 0x001b0008);
+  uint32_t start_val = ((uint32_t)__KERNEL_CS <<16 | (uint32_t)__USER32_CS);
+  wrmsr_write(0xc0000081, 0, start_val);
+  wrmsr_write(0xC0000082, t32, 0xffffffff);
+  rdmsr_read(0xC0000081);
+  rdmsr_read(0xC0000082);*/
 
-  //kprintf("star -> %x, lstar -> %x, cstar -> %x, sfmask -> %x\n", star, lstar, cstar, sfmask);
+  kprintf("efer ->%x, star -> %x, lstar -> %x, cstar -> %x, sfmask -> %x\n", efer, star, lstar, cstar, sfmask);
 }
 
 void main_task(){
@@ -207,14 +254,16 @@ void user_process_1(){
 
 void user_ring3_process() {
   kprintf("This is ring 3 user process 1\n");
-  //uint64_t __err;
-  /*__asm__ __volatile__ ("movq $0, %%rdi\n\t"
+  /*uint64_t __err;
+  __asm__ __volatile__ ("movq $0, %%rdi\n\t"
                         "movq $0, %%rsi\n\t"
                         "movq $0, %%rax\n\t"
                         "syscall\n\t"
                         :"=a"(__err)
                         :"0" (57));*/
-  //__asm__ __volatile__ ("syscall\n\t");
+  __asm__ __volatile__ ("movq $1, %rax\n\t"
+                        "syscall\n\t");
+  kprintf("returned from syscall\n");
   while(1){};
   //yeild();
   /*while(1) {
@@ -228,6 +277,51 @@ void save_rsp(){
   uint64_t rsp;
   __asm__ __volatile__ ("movq %%rsp, %0" : "=m"(rsp) : : );
   set_tss_rsp((void *)rsp);
+}
+
+uint64_t power(uint64_t num, uint64_t pow){
+  uint64_t result = 1;
+  for(int i=0; i<pow; i++){
+    result *= num;
+  }
+  return result;
+}
+
+uint64_t get_int_size(char *size){
+  uint64_t int_size=0,fac = 1;
+  for(int i=10;i>=0;i--){
+    int_size += ((size[i]-48)*fac);
+    fac = fac *8;
+    //kprintf("hhh->%d",(size[i]-48)*fac);
+  }
+  return int_size;
+}
+
+void init_tarfs(){
+  kprintf("tarfs start %x tarfs end %x\n", &_binary_tarfs_start,&_binary_tarfs_end);
+  posix_header_ustar* temp = (posix_header_ustar*)&_binary_tarfs_start;
+  uint8_t* byteptr = (uint8_t*) temp;
+  int i=0;
+  while((uint64_t) temp < (uint64_t) &_binary_tarfs_end){//|| (uint64_t) temp < (uint64_t) &_binary_tarfs_end){
+    if(temp->name[0] == '\0' || temp->size[0] == '\0'){
+      break;
+    }
+    char *size = temp->size;
+    uint64_t int_size = get_int_size(size);
+    kprintf("n -> %s, s_string - > %s , s_int -> %d, temp - %x \n", temp->name, size, int_size, temp);
+    if(int_size>0){  
+      uint64_t last = int_size % 512;
+      int_size = int_size + 512 - last;
+    }
+
+    //temp++;
+    byteptr += int_size + 512;
+
+    temp = (posix_header_ustar*) byteptr;
+    i++;
+    //kprintf("n - %s ", temp->name);
+    //temp++;
+  }
 }
 
 void kernel_1_thread(){
@@ -248,17 +342,17 @@ void kernel_1_thread(){
     yeild();
     kprintf("returning to kernel_1_thread\n");
   }
+  init_tarfs();
   uint64_t stack = (uint64_t)kmalloc(4096,NULL);
   stack+= 4088;
   save_rsp();
   switch_to_ring3((uint64_t *)&user_ring3_process, stack);
+
   while(1){};
 }
 
 void kernel_2_thread(){
-  int j = 0;
-  while(j<2){
-    j++;
+  while(1){
     kprintf("This is the second kernel thread\n");
     //user process init
     /*uint64_t func_ptr = (uint64_t)&user_process_1;

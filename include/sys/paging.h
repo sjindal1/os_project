@@ -49,8 +49,8 @@ struct page_frame_t{
 #define KERNPAG   ((_PB)|(_WB)|(_UB))
 #define USERPAG   ((_PB)|(_WB)|(_UB))
 
-#define GDT_ENTRY_KERNEL_CS		12
-#define GDT_ENTRY_KERNEL_DS		13
+#define GDT_ENTRY_KERNEL_CS		2
+#define GDT_ENTRY_KERNEL_DS		3
 #define GDT_ENTRY_DEFAULT_USER_CS	14
 #define GDT_ENTRY_DEFAULT_USER_DS	15
 #define GDT_ENTRY_DEFAULT_USER32_CS	4

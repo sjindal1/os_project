@@ -37,6 +37,11 @@ void int_32_print()
   kprintf("one of the fisrt 6 interrupt occured");
 }
 
+void int_6_print()
+{
+  kprintf("6th interrupt occured\n");
+}
+
 void print_time(int time){
   int sec = time % 60;
   int min = time / 60;
