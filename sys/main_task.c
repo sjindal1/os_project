@@ -111,7 +111,7 @@ void init_syscalls(){
   uint64_t t = (uint64_t) &syscall_handle;
   uint32_t t32 = (uint32_t) (t>>32);
   //wrmsr_write(0xc0000081, 0, 0x231b1008);
-  wrmsr_write(0xc0000081, 0, 0xf0f89098);
+  wrmsr_write(0xc0000081, 0, 0x231b1008);
   /*uint32_t start_val = ((uint32_t)__KERNEL_CS <<16 | (uint32_t)__USER32_CS);
   wrmsr_write(0xc0000081, 0, start_val);*/
   wrmsr_write(0xc0000082, t32, 0xffffffff);
@@ -214,7 +214,7 @@ void user_ring3_process() {
                         "syscall\n\t"
                         :"=a"(__err)
                         :"0" (57));*/
-  __asm__ __volatile__ ("syscall\n\t");
+  //__asm__ __volatile__ ("syscall\n\t");
   while(1){};
   //yeild();
   /*while(1) {

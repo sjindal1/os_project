@@ -105,14 +105,14 @@ switch_to_ring3:
 	mov %ax, %gs;
 	//mov %ax, %ss;  
 	              
-	//mov %rsp, %rax;  
+	mov %rsp, %rax;  
 	pushq $0x23;  
-	//pushq %rax; 
-	pushq %rsi; 
+	pushq %rax; 
+	//pushq %rsi; 
 	pushfq;  
-	popq %rax;
-	orq $0x200, %rax;
-	push %rax;
+	//popq %rax;
+	//orq $0x200, %rax;
+	//push %rax;
 	pushq $0x1B;  
 	pushq %rdi;  
 	iretq;  
