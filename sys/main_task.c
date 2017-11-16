@@ -4,6 +4,7 @@
 #include <sys/paging.h>
 #include <sys/gdt.h>
 #include <sys/tarfs.h>
+#include <sys/syscalls.h>
 
 typedef struct posix_header_ustar posix_header_ustar;
 
@@ -11,7 +12,6 @@ extern uint64_t *kernel_cr3;
 
 void kernel_1_thread();
 void kernel_2_thread();
-void yeild();
 void switch_out(pcb*);
 void switch_to(pcb* , pcb*);
 void switch_to_ring3(uint64_t *, uint64_t);
@@ -27,13 +27,6 @@ uint64_t thread_st[512];
 int free_pcb=0;
 int no_of_task=0;
 int current_process=0;
-
-void push_asm()
-{
-	//__asm__{
-	//	""
-	//}
-}
 
 uint64_t get_rflags_asm()
 {
@@ -89,84 +82,6 @@ void create_kernel_thread(uint64_t* func_ptr){
   no_of_task++;
 }
 
-
-
-void wrmsr(uint32_t msrid, uint64_t msr_value){
-  uint32_t msr_value_lo = (uint32_t) msr_value;
-  uint32_t msr_value_hi = (uint32_t) (msr_value>>32);
-  __asm__ __volatile__ ("wrmsr": : "c" (msrid), "a" (msr_value_lo), "d"(msr_value_hi));
-}
-
-uint64_t rdmsr(uint32_t msrid){
-  uint64_t msr_value_lo;
-  uint64_t msr_value_hi;
-  __asm__ __volatile__ ("rdmsr": "=a" (msr_value_lo), "=d" (msr_value_hi): "c" (msrid));
-  return (uint64_t)(msr_value_hi<<32) | (uint64_t)msr_value_lo;
-}
-
-
-
-void syscall_handle(){
-  __asm__ __volatile__ ("pushq %r15\n\t"
-                        "pushq %rbx\n\t"
-                        "movq %rax, %r15\n\t");
-  uint64_t user_rsp, user_rcx, user_r11;
-  uint64_t kernel_rsp = (&pcb_entries[current_process])->rsp;
-  uint32_t syscall_num;
-  //save the user stack into rax and load kernel stack
-  __asm__ __volatile__ ("movq %%rsp, %%rbx\n\t"
-                        "movq %0, %%rsp\n\t"
-                        :
-                        :"m"(kernel_rsp)
-                        :"rbx");
-  //save the user stack,rip and rflags that are stored in rbx, rcx and r11 respectively
-  __asm__ __volatile__ ("movq %%rbx, %0\n\t"
-                        "movq %%rcx, %1\n\t"
-                        "movq %%r11, %2\n\t"
-                        "movq %%r15, %3\n\t"
-                        :"=m"(user_rsp), "=m"(user_rcx), "=m"(user_r11), "=m"(syscall_num)
-                        :
-                        :"rbx","rcx","r11","rax");
-
-  kprintf("syscall handler\n");
-
-  kprintf("syscall_num -> %d\n", syscall_num);
-
-  yeild();
-
-  //restore the stack,rip and rflags that are stored in rbx, rcx and r11 respectively
-  __asm__ __volatile__ ("movq %1, %%rcx\n\t"
-                        "movq %2, %%r11\n\t"
-                        "movq %0, %%rsp\n\t"
-                        "popq %%rbx\n\t"
-                        "popq %%r15\n\t"
-                        :
-                        :"m"(user_rsp), "m"(user_rcx), "m"(user_r11)
-                        :"rcx","r11");
-  __asm__ __volatile__ ("sysretq\n\t");
-}
-
-void init_syscalls(){
-  wrmsr(0xC0000081, ((uint64_t)0x1b)<<48  | ((uint64_t)0x8)<<32);
-  wrmsr(0xC0000082, (uint64_t)&syscall_handle);
-  uint64_t efer = rdmsr(0xC0000080);
-  wrmsr(0xC0000080, (uint64_t)(efer|0x1));
-  uint64_t star = rdmsr(0xC0000081);
-  uint64_t lstar = rdmsr(0xC0000082);
-  uint64_t cstar = rdmsr(0xC0000083);
-  uint64_t sfmask = rdmsr(0xC0000084);
-  /*uint64_t t = (uint64_t) &syscall_handle;
-  uint32_t t32 = (uint32_t) (t>>32);
-  //wrmsr_write(0xc0000081, 0, 0x231b1008);
-  wrmsr_write(0xC0000081, 0, 0x001b0008);
-  uint32_t start_val = ((uint32_t)__KERNEL_CS <<16 | (uint32_t)__USER32_CS);
-  wrmsr_write(0xc0000081, 0, start_val);
-  wrmsr_write(0xC0000082, t32, 0xffffffff);
-  rdmsr_read(0xC0000081);
-  rdmsr_read(0xC0000082);*/
-
-  kprintf("efer ->%x, star -> %x, lstar -> %x, cstar -> %x, sfmask -> %x\n", efer, star, lstar, cstar, sfmask);
-}
 
 void main_task(){
 
@@ -261,8 +176,17 @@ void user_ring3_process() {
                         "syscall\n\t"
                         :"=a"(__err)
                         :"0" (57));*/
-  __asm__ __volatile__ ("movq $1, %rax\n\t"
-                        "syscall\n\t");
+  uint8_t buf[] = "hello\nsecond\nthird";
+  uint8_t *buf1 = buf;
+  kprintf("buf add -> %p\n", buf1);
+  __asm__ __volatile__ ("movq $1, %%rax\n\t"
+                        "movq $1, %%rdi\n\t"
+                        "movq %0, %%rsi\n\t"
+                        "movq $18, %%rdx\n\t"
+                        "movq $5, %%r10\n\t"
+                        "syscall\n\t"
+                        :
+                        :"m"(buf1));
   kprintf("returned from syscall\n");
   while(1){};
   //yeild();

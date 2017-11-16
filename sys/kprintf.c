@@ -9,7 +9,7 @@ void displayBuff();
 void buffCopy();
 
 int x_pos=0, y_pos=0;
-#define ymax 20
+#define ymax 12
 #define xmax 80
 char buf[ymax][xmax];
 char final_str[1000];

@@ -16,4 +16,6 @@ struct pcb
   int exit_status;
 };
 
+void yeild();
+
 #endif

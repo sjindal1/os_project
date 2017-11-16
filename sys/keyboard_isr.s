@@ -3,7 +3,7 @@
 .text
 .global _x86_64_keyboard_isr
 .global key_press_handle
-
+.global _term_keypress_handle
 
 _x86_64_keyboard_isr:
   pushf
@@ -26,7 +26,8 @@ _x86_64_keyboard_isr:
 	pushq %r14;
 	pushq %r15;
 
-  call key_press_handle
+  //call key_press_handle
+  call _term_keypress_handle
   mov $0x20, %al
   out %al, $0x20
 
