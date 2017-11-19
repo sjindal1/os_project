@@ -2,6 +2,7 @@
 #include <sys/kprintf.h>
 #include <sys/kernel.h>
 #include <sys/tarfs.h>
+#include <sys/utils.h>
 
 uint16_t tarfsfilecount = 0;
 
@@ -16,6 +17,25 @@ uint32_t get_int_size(char *size){
   }
   return int_size;
 }
+
+// input - file name
+// output - start address
+// if file not found returns 0
+//uint64_t openelf(uint8_t filename, int *size)
+uint64_t _tarfsopen(uint8_t *filename)
+{
+  uint16_t i, res = 1;
+
+  for(i = 0; i < tarfsfilecount; i++)
+  {
+    res = strcmp(filename, ftarinfo[i].fname);
+    if(res == 0)
+      return ftarinfo[i].fstartaddr;
+  }
+
+  return 0;
+}
+
 
 uint64_t _tarfs_read(){
   return 0;
