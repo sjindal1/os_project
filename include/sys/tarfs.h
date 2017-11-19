@@ -4,6 +4,10 @@
 extern char _binary_tarfs_start;
 extern char _binary_tarfs_end;
 
+void init_tarfs();
+
+typedef struct posix_header_ustar posix_header_ustar;
+
 struct posix_header_ustar {
   char name[100];
   char mode[8];
@@ -23,5 +27,16 @@ struct posix_header_ustar {
   char prefix[155];
   char pad[12];
 };
+
+typedef struct tarfsinfo tarfsinfo;
+
+struct tarfsinfo
+{
+  uint8_t* fname;
+  uint32_t fsize;
+  uint64_t fstartaddr;
+};
+
+uint64_t _tarfsopen(uint8_t *);
 
 #endif

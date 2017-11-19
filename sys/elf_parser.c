@@ -3,6 +3,7 @@
 #include <sys/kernel.h>
 #include <sys/terminal.h>
 #include <sys/syscalls.h>
+#include <sys/utils.h>
 #include <sys/elf64.h>
 
 uint64_t va_start;
@@ -33,7 +34,7 @@ tarfsinfo ftarinfo[256];
 // output - start address
 // if file not found returns 0
 //uint64_t openelf(uint8_t filename, int *size)
-uint64_t _tarfsopen(uint8_t filename)
+uint64_t _tarfsopen(uint8_t *filename)
 {
 	uint16_t i, res = 1;
 
@@ -53,7 +54,7 @@ void parseelf(pcb *curpcb)
 	//read the header or direcly map the header as it is memory
 	//Elf64_Ehdr *elfhdr = curpcb->fstartaddr;
 
-	uint8_t hdr[sizeof(Elf64_Ehdr)];
+	//uint8_t hdr[sizeof(Elf64_Ehdr)];
 
 
 

@@ -18,8 +18,8 @@ int _term_x_pos=0, _term_y_pos=0;
 uint8_t _termbuf[tymax][txmax];
 
 uint8_t cmdbuf[ncmdbuf][cmdbufsiz+1];
-bufdetails bufinfo[ncmdbuf];
-uint8_t cur_cmd_bufy = 0, cur_cmd_xpos = 0;
+volatile bufdetails bufinfo[ncmdbuf];
+uint8_t cur_cmd_bufy = 0, cur_cmd_xpos = 0, cur_read_bufy=0;
 
 extern int ps2_ascii_mapping[];
 extern int ps2_ascii_shift_mappings[];
@@ -148,8 +148,10 @@ void _termupdatecmdbuf(char str)
 	//uint8_t cmdbuf[ncmdbuf][cmdbufsiz];
 //bufdetails bufinfo[ncmdbuf];
 //uint8_t cur_cmd_bufy = 0, cur_cmd_xpos = 0;
-//	if(cur_cmd_bufy >= ncmdbuf)// || cur_cmd_xpos >= cmdbufsiz)
-//		return;		// skipping the key inputs
+	if(bufinfo[cur_cmd_bufy].valid == 1)// || cur_cmd_xpos >= cmdbufsiz)
+		return;		// skipping the key inputs
+
+	bufinfo[cur_cmd_bufy].xpos = 0;
 
 	if(str == '\n')
 	{
@@ -184,8 +186,6 @@ void _termupdatecmdbuf(char str)
 	// handling the circular part
 	if(cur_cmd_bufy == ncmdbuf){
 		cur_cmd_bufy = 0;
-		bufinfo[cur_cmd_bufy].size = 0;
-		bufinfo[cur_cmd_bufy].valid = 0;
 	}
 
 	return;
@@ -229,3 +229,35 @@ void _term_keypress_handle(){
 	 }
 }
 
+uint64_t _termread(uint8_t * user_buf, uint64_t size){
+	kprintf("inside term read, user_buf = %x, size = %d\n", user_buf, size);
+	uint64_t temp = 0;
+	while(1){
+		volatile uint8_t flag = bufinfo[cur_read_bufy].valid;
+		if(flag == 1){
+			break;
+		}
+		temp++;
+	}
+	uint8_t no_bytes_copy = 0;
+	if((bufinfo[cur_read_bufy].size - bufinfo[cur_read_bufy].xpos) <= size){
+		no_bytes_copy = (bufinfo[cur_read_bufy].size - bufinfo[cur_read_bufy].xpos);
+	}else{
+		no_bytes_copy = size;
+	}
+	int j=0;
+	for(uint8_t i = bufinfo[cur_read_bufy].xpos; i<no_bytes_copy + bufinfo[cur_read_bufy].xpos ; i++){
+		user_buf[j] = cmdbuf[cur_read_bufy][i];
+		j++;
+	}
+	if((bufinfo[cur_read_bufy].size - bufinfo[cur_read_bufy].xpos) <= size){
+		bufinfo[cur_read_bufy].size = 0;
+		bufinfo[cur_read_bufy].valid = 0;
+		bufinfo[cur_read_bufy].xpos = 0;
+		cur_read_bufy++;
+	}else{
+		bufinfo[cur_read_bufy].xpos = size;
+	}
+	kprintf("returning from read user_buf - %s",user_buf);
+	return no_bytes_copy;
+}

@@ -1,14 +1,11 @@
 #include <sys/defs.h>
 #include <sys/kprintf.h>
 #include <sys/kernel.h>
-#include <sys/terminal.h>
+#include <sys/vfs.h>
 #include <sys/syscalls.h>
 
-
-extern pcb pcb_entries[];
-extern int current_process;
-
 uint64_t _syswrite(syscall_params *params);
+uint64_t _sysread(syscall_params *params);
 
 _syscallfunc_ sysfunc[100];
 
@@ -34,6 +31,7 @@ void init_syscalls(){
   uint64_t lstar = rdmsr(0xC0000082);
   uint64_t cstar = rdmsr(0xC0000083);
   uint64_t sfmask = rdmsr(0xC0000084);
+  sysfunc[0] = &_sysread;
   sysfunc[1] = &_syswrite;
   kprintf("efer ->%x, star -> %x, lstar -> %x, cstar -> %x, sfmask -> %x\n", efer, star, lstar, cstar, sfmask);
 }
@@ -41,23 +39,23 @@ void init_syscalls(){
 void syscall_handle(){
   __asm__ __volatile__ ("pushq %rax\n\t"
                         "pushq %rbx\n\t"
-			"pushq %rcx\n\t"
-			"pushq %rdx\n\t"
+												"pushq %rcx\n\t"
+												"pushq %rdx\n\t"
                         "pushq %rsi\n\t"
-			"pushq %rdi\n\t"
-			"pushq %rbp\n\t"
-			"pushq %r8\n\t"
-			"pushq %r9\n\t"
-			"pushq %r10\n\t"
-			"pushq %r11\n\t"
-			"pushq %r12\n\t"
-			"pushq %r13\n\t"
-			"pushq %r14\n\t"
-			"pushq %r15\n\t"
-			"movq %rdx, %r9\n\t"
+												"pushq %rdi\n\t"
+												"pushq %rbp\n\t"
+												"pushq %r8\n\t"
+												"pushq %r9\n\t"
+												"pushq %r10\n\t"
+												"pushq %r11\n\t"
+												"pushq %r12\n\t"
+												"pushq %r13\n\t"
+												"pushq %r14\n\t"
+												"pushq %r15\n\t"
+												"movq %rdx, %r9\n\t"
                         "movq %rax, %r15\n\t");
   uint64_t user_rsp, user_rcx, user_r11;
-  uint64_t kernel_rsp = (&pcb_entries[current_process])->rsp;
+  uint64_t kernel_rsp = (&pcb_struct[current_process])->rsp;
   syscall_params params;
   //save the user stack into rax and load kernel stack
   __asm__ __volatile__ ("movq %%rsp, %%rbx\n\t"
@@ -79,45 +77,55 @@ void syscall_handle(){
                         :
                         :"rbx","rcx","r11","rax");
 
-  kprintf("syscall handler\n");
-
-  kprintf("syscall_num -> %d, p1 ->%d, p2 ->%d, p3 ->%d, p4 ->%d\n", params.sysnum, params.p1, params.p2, params.p3,params.p4);
 
   sysfunc[params.sysnum](&params);
 
-  yeild();
-
-  //restore the stack,rip and rflags that are stored in rbx, rcx and r11 respectively
   __asm__ __volatile__ ("movq %1, %%rcx\n\t"
                         "movq %2, %%r11\n\t"
                         "movq %0, %%rsp\n\t"
-			"popq %%r15\n\t"
-			"popq %%r14\n\t"
-			"popq %%r13\n\t"
-			"popq %%r12\n\t"
-			"popq %%r11\n\t"
-			"popq %%r10\n\t"
-			"popq %%r9\n\t"
-			"popq %%r8\n\t"
+                        //"movq %3, %%rsi\n\t"
+												"popq %%r15\n\t"
+												"popq %%r14\n\t"
+												"popq %%r13\n\t"
+												"popq %%r12\n\t"
+												"popq %%r11\n\t"
+												"popq %%r10\n\t"
+												"popq %%r9\n\t"
+												"popq %%r8\n\t"
                         "popq %%rbp\n\t"
-			"popq %%rdi\n\t"
-			"popq %%rsi\n\t"
-			"popq %%rdx\n\t"
-			"popq %%rcx\n\t"
-			"popq %%rbx\n\t"
-			"popq %%rax\n\t"
+												"popq %%rdi\n\t"
+												"popq %%rsi\n\t"
+												"popq %%rdx\n\t"
+												"popq %%rcx\n\t"
+												"popq %%rbx\n\t"
+												"popq %%rax\n\t"
                         :
-                        :"m"(user_rsp), "m"(user_rcx), "m"(user_r11)
-                        :"rcx","r11");
+                        :"m"(user_rsp), "m"(user_rcx), "m"(user_r11), "m"(params.p2)
+                        :);
+
   __asm__ __volatile__ ("sysretq\n\t");
 }
 
 
 uint64_t _syswrite(syscall_params *params){
-	kprintf("you are in write p2 = %x, p3 = %d\n", params->p2, params->p3);
+	//kprintf("you are in write p2 = %x, p3 = %d\n", params->p2, params->p3);
 	//standard out and standard error terminal output.
-	if(params->p1 == 1 || params->p1 == 2){
+/*	if(params->p1 == 1 || params->p1 == 2){
 		_termwrite((uint8_t *)(params->p2), params->p3);
+	}*/
+
+	return _vfswrite(params->p1, (uint8_t *)params->p2, params->p3);
+}
+
+uint64_t _sysread(syscall_params *params){
+	/*//kprintf("you are in read p2 = %x, p3 = %d\n", params->p2, params->p3);
+	//standard out and standard error terminal output.
+	if(params->p1 == 0){
+		_termread((uint8_t *)(params->p2), params->p3);
 	}
+	//kprintf("returning from sysread user buf - %x\n", (params->p2));
+	return 1;*/
+
+	_vfsread(params->p1, (uint8_t *)params->p2, params->p3);
 	return 1;
 }
