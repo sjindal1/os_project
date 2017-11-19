@@ -18,6 +18,9 @@ uint64_t _vfsopen(uint8_t* filename)
 
 uint32_t _vfsread(uint16_t fd, uint8_t *buffer, uint16_t size)
 {
+  if(pcb_struct[current_process].mfdes[0].status == 0){
+  	return 0; 
+  }
 	uint64_t retvalue = 0;
 	//get the fd type
 	uint32_t fdtype = pcb_struct[current_process].mfdes[fd].type;
@@ -28,7 +31,9 @@ uint32_t _vfsread(uint16_t fd, uint8_t *buffer, uint16_t size)
 	}
 	else if(fdtype == TARFS)
 	{
-		//retvalue = _tarfs((uint8_t *)buffer, size);
+		uint64_t start_add = pcb_struct[current_process].mfdes[fd].addr + pcb_struct[current_process].mfdes[fd].offset;
+		retvalue = _tarfs_read(start_add, (uint8_t *)buffer, size);
+		pcb_struct[current_process].mfdes[fd].offset += retvalue;	
 	}
 	else 
 	{
@@ -40,6 +45,9 @@ uint32_t _vfsread(uint16_t fd, uint8_t *buffer, uint16_t size)
 
 uint32_t _vfswrite(uint16_t fd, uint8_t* buffer, uint16_t size)
 {
+	if(pcb_struct[current_process].mfdes[0].status == 0){
+  	return 0; 
+  }
 	//get the fd type
 	uint32_t fdtype = pcb_struct[current_process].mfdes[fd].type;
 	uint32_t retvalue = 0;

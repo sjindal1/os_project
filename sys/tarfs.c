@@ -13,7 +13,6 @@ uint32_t get_int_size(char *size){
   for(int i=10;i>=0;i--){
     int_size += ((size[i]-48)*fac);
     fac = fac *8;
-    //kprintf("hhh->%d",(size[i]-48)*fac);
   }
   return int_size;
 }
@@ -36,9 +35,15 @@ uint64_t _tarfsopen(uint8_t *filename)
   return 0;
 }
 
-
-uint64_t _tarfs_read(){
-  return 0;
+//TODO
+//make sure the size is correct this function does not care for boundaries.
+//It reads the size number of bytes no matter what.
+uint64_t _tarfs_read(uint64_t start_add, uint8_t *buf, uint32_t size){
+  uint8_t *file_pointer = (uint8_t *)start_add;
+  for(int i=0;i<size;i++){
+    buf[i] = file_pointer[i];
+  }
+  return size;
 }
 
 void init_tarfs(){

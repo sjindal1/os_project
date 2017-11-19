@@ -63,8 +63,11 @@ void create_kernel_thread(uint64_t* func_ptr){
   pcb_struct[free_pcb].kstack = kmalloc(4096, NULL);
   pcb_struct[free_pcb].rsp = (uint64_t)(pcb_struct[free_pcb].kstack) + 0xF80;
   pcb_struct[free_pcb].mfdes[0].type = TERMINAL;
+  pcb_struct[free_pcb].mfdes[0].status = 1;
   pcb_struct[free_pcb].mfdes[1].type = TERMINAL;
+  pcb_struct[free_pcb].mfdes[1].status = 1;
   pcb_struct[free_pcb].mfdes[2].type = TERMINAL;
+  pcb_struct[free_pcb].mfdes[2].status = 1;
   
   //kprintf("kstack of second thread kstack->%x rsp-> %x\n",pcb_struct[free_pcb].kstack,pcb_struct[free_pcb].rsp);
 
@@ -105,8 +108,11 @@ void create_pcb_stack(uint64_t *user_cr3,uint64_t va_func){
   pcb_struct[free_pcb].kstack = kmalloc(4096, NULL);
   pcb_struct[free_pcb].rsp = (uint64_t)(pcb_struct[free_pcb].kstack) + 0xF80;
   pcb_struct[free_pcb].mfdes[0].type = TERMINAL;
+  pcb_struct[free_pcb].mfdes[0].status = 1;
   pcb_struct[free_pcb].mfdes[1].type = TERMINAL;
+  pcb_struct[free_pcb].mfdes[1].status = 1;
   pcb_struct[free_pcb].mfdes[2].type = TERMINAL;
+  pcb_struct[free_pcb].mfdes[2].status = 1;
   //kprintf("kstack of second thread kstack->%x rsp-> %x\n",pcb_struct[free_pcb].kstack,pcb_struct[free_pcb].rsp);
 
    
