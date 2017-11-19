@@ -77,8 +77,9 @@ void syscall_handle(){
                         :
                         :"rbx","rcx","r11","rax");
 
-
+  //kprintf("syscall_handle 1 buf = %x\n", params.p2);
   sysfunc[params.sysnum](&params);
+  //kprintf("syscall_handle 2 buf = %x\n", params.p2);
 
   __asm__ __volatile__ ("movq %1, %%rcx\n\t"
                         "movq %2, %%r11\n\t"

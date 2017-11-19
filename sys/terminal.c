@@ -49,6 +49,7 @@ void _termdisplayBuff(){
 }
 
 uint64_t _termwrite(uint8_t *final_str, uint64_t size){
+	//kprintf("_termwrite buf enter = %x\n", final_str);
 	int array_pos = 0;
 	for(;_term_y_pos<tymax;_term_y_pos++){
 		for(int i=_term_x_pos;i<80;i++){
@@ -140,6 +141,8 @@ uint64_t _termwrite(uint8_t *final_str, uint64_t size){
 	  }
 	  _termdisplayBuff();
 	}
+
+	//kprintf("_termwrite buf exit = %x\n", final_str);
 	return array_pos;
 }
 

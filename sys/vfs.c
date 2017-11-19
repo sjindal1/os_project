@@ -18,9 +18,10 @@ uint64_t _vfsopen(uint8_t* filename)
 
 uint32_t _vfsread(uint16_t fd, uint8_t *buffer, uint16_t size)
 {
-  if(pcb_struct[current_process].mfdes[0].status == 0){
-  	return 0; 
-  }
+	if(pcb_struct[current_process].mfdes[0].status == 0)
+	{
+	  	return 0; 
+	}
 	uint64_t retvalue = 0;
 	//get the fd type
 	uint32_t fdtype = pcb_struct[current_process].mfdes[fd].type;
@@ -45,9 +46,10 @@ uint32_t _vfsread(uint16_t fd, uint8_t *buffer, uint16_t size)
 
 uint32_t _vfswrite(uint16_t fd, uint8_t* buffer, uint16_t size)
 {
-	if(pcb_struct[current_process].mfdes[0].status == 0){
-  	return 0; 
-  }
+	if(pcb_struct[current_process].mfdes[0].status == 0)
+	{
+  		return 0; 
+  	}
 	//get the fd type
 	uint32_t fdtype = pcb_struct[current_process].mfdes[fd].type;
 	uint32_t retvalue = 0;
@@ -62,7 +64,7 @@ uint32_t _vfswrite(uint16_t fd, uint8_t* buffer, uint16_t size)
 	}
 	else 
 	{
-		kprintf("_vfsread: It is not supported \n");
+		kprintf("_vfswrite: It is not supported fd = %x \n", fd);
 	}
 
 	return retvalue;

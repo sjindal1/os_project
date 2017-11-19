@@ -6,6 +6,9 @@
 #include <sys/tarfs.h>
 #include <sys/syscalls.h>
 
+
+uint8_t bufpruthvi[] = {"hello\nsecond\nthird\nfourth"};
+
 void kernel_1_thread();
 void kernel_2_thread();
 void switch_out(pcb*);
@@ -27,7 +30,7 @@ void main_task(){
   pcb_struct[free_pcb].exit_status = -1;
   free_pcb++;
   no_of_task++;*/
-  
+
   create_kernel_thread((uint64_t *)&kernel_1_thread);
   create_kernel_thread((uint64_t *)&kernel_2_thread);
 
@@ -71,28 +74,45 @@ void user_ring3_process() {
                         "syscall\n\t"
                         :"=a"(__err)
                         :"0" (57));*/
-  uint8_t buf[] = "hello\nsecond\nthird";
-  uint8_t *buf1 = buf;
-  uint8_t a =0,b=10;
+  uint8_t bufee[] = "hello\nsecond\nthird\nfourth";
+  uint8_t *buf1 = bufee;
+  uint32_t a =1,b=0;
   int c=a+b;
-  kprintf("buf add -> %p & %p %d %d \n", buf1, &buf1, b, c);
-
+  uint32_t *intp = &a;
+  uint32_t len = 25;
+  kprintf("buf add -> %p & %p %d %x %d\n", buf1, &buf1, a, intp, c);
+#if 1
+  uint32_t __err = 0;
+  __asm__ __volatile__ ("syscall"
+        : "=a" (__err) 
+        : "0" (1), "b" ((uint64_t)(a)), "c" ((uint64_t)(buf1)), "d" ((uint64_t)(len)));
+#else
   __asm__ __volatile__ ("movq $1, %%rax\n\t"
-                        "movq $1, %%rdi\n\t"
+                        "movq %1, %%rdi\n\t"
                         "movq %0, %%rsi\n\t"
-                        "movq $18, %%rdx\n\t"
-                        "movq $5, %%r10\n\t"
+                        "movq $25, %%rdx\n\t"
                         "syscall\n\t"
                         :
-                        :"m"(buf1)
-                        :"rsp","rcx","r11","rdi","rsi","rdx","r10");
+                        :"m"(buf1), "m"(a)
+                        :"rsp","rax","rdi","rsi","rdx", "rcx", "r11");
+#endif
+  kprintf("buf1 add return- %p & %p %d %x %d\n", buf1, &buf1, a, intp, c);
+  
 
-  kprintf("buf1 add after return- %d %p & %p %d \n",c, buf1, &buf1, b);
-  kprintf(" bufjpruthvi %s\n", buf1);
   uint8_t buf2[256];
   uint8_t *buf3 = buf2;
-  for(int i = 0;i<10;i++){
-    __asm__ __volatile__ ("movq $0, %%rax\n\t"
+  for(int i = 0;i<2;i++){
+  uint32_t readfd = 0, writefd = 1;
+  uint32_t readlen = 128, templen = 18;
+  uint32_t __err = 0;
+  __asm__ __volatile__ ("syscall"
+        : "=a" (__err) 
+        : "0" (0), "b" ((uint64_t)(readfd)), "c" ((uint64_t)(buf3)), "d" ((uint64_t)(readlen)));
+
+  __asm__ __volatile__ ("syscall"
+        : "=a" (__err) 
+        : "0" (1), "b" ((uint64_t)(writefd)), "c" ((uint64_t)(buf3)), "d" ((uint64_t)(templen)));
+    /*__asm__ __volatile__ ("movq $0, %%rax\n\t"
                           "movq $0, %%rdi\n\t"
                           "movq %0, %%rsi\n\t"
                           "movq $128, %%rdx\n\t"
@@ -109,9 +129,12 @@ void user_ring3_process() {
                           "syscall\n\t"
                           :
                           :"m"(buf3)
-                          :"rsp","rcx","r11","rdi","rsi","rdx","r10");
+                          :"rsp","rcx","r11","rdi","rsi","rdx","r10");*/
     kprintf("returned from write\n");
   }
+
+
+
   //kprintf("returned from syscall\n");
   while(1){};
   //yield();
