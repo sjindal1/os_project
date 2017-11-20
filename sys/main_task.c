@@ -105,71 +105,16 @@ void user_ring3_process() {
                         :"0" (57));*/
   uint8_t bufee[] = "hello\nsecond\nthird\nfourth";
   uint8_t *buf1 = bufee;
-  /*uint32_t a =1,b=0;
-  int c=a+b;
-  uint32_t *intp = &a;*/
-  //uint32_t len = 25;
-  //kprintf("buf add -> %p & %p %d %x %d\n", buf1, &buf1, a, intp, c);
+
   trialwrite(buf1);
-#if 0
-  uint32_t __err = 0;
-  __asm__ __volatile__ ("syscall"
-        : "=a" (__err) 
-        : "0" (1), "b" ((uint64_t)(a)), "c" ((uint64_t)(buf1)), "d" ((uint64_t)(len)));
-#else
-/*  __asm__ __volatile__ ("movq $1, %%rax\n\t"
-                        "movq $1, %%rdi\n\t"
-                        "movq %0, %%rsi\n\t"
-                        "movq $25, %%rdx\n\t"
-                        "syscall\n\t"
-                        :
-                        :"m"(buf1)
-                        :"rsp","rax","rdi","rsi","rdx", "rcx", "r11");
-*/#endif
   //kprintf("buf1 add return- %p & %p %d %x %d\n", buf1, &buf1, a, intp, c);
 
-uint8_t buf2[256];
-uint8_t *bufptr = buf2;
-trialread(bufptr);
-
-trialwrite(bufptr);
-
-#if 0
   uint8_t buf2[256];
-  uint8_t *buf3 = buf2;
-  for(int i = 0;i<2;i++){
-  uint32_t readfd = 0, writefd = 1;
-  uint32_t readlen = 128, templen = 18;
-  uint32_t __err = 0;
-  __asm__ __volatile__ ("syscall"
-        : "=a" (__err) 
-        : "0" (0), "b" ((uint64_t)(readfd)), "c" ((uint64_t)(buf3)), "d" ((uint64_t)(readlen)));
+  uint8_t *bufptr = buf2;
+  trialread(bufptr);
 
-  __asm__ __volatile__ ("syscall"
-        : "=a" (__err) 
-        : "0" (1), "b" ((uint64_t)(writefd)), "c" ((uint64_t)(buf3)), "d" ((uint64_t)(templen)));
-    /*__asm__ __volatile__ ("movq $0, %%rax\n\t"
-                          "movq $0, %%rdi\n\t"
-                          "movq %0, %%rsi\n\t"
-                          "movq $128, %%rdx\n\t"
-                          "movq $5, %%r10\n\t"
-                          "syscall\n\t"
-                          :
-                          :"m"(buf3)
-                          :"rsp","rcx","r11","rdi","rsi","rdx","r10");
-    __asm__ __volatile__ ("movq $1, %%rax\n\t"
-                          "movq $1, %%rdi\n\t"
-                          "movq %0, %%rsi\n\t"
-                          "movq $18, %%rdx\n\t"
-                          "movq $5, %%r10\n\t"
-                          "syscall\n\t"
-                          :
-                          :"m"(buf3)
-                          :"rsp","rcx","r11","rdi","rsi","rdx","r10");*/
-    kprintf("returned from write\n");
-  }
+  trialwrite(bufptr);
 
-#endif
 
   //kprintf("returned from syscall\n");
   while(1){};

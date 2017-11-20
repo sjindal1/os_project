@@ -68,17 +68,6 @@ void syscall_handle(){
 												"movq %rsi, %r13\n\t"
 												"movq %rdx, %r12");
 
-  /*uint64_t kernel_rsp = (&pcb_struct[current_process])->rsp;
-  __asm__ __volatile__ ("movq %0, %%rsp\n\t"
-                        "pushq %%rcx\n\t"
-                        "pushq %%r11\n\t"
-                       :
-                       :"m"(kernel_rsp)
-                       :);
-  
-  __asm__ __volatile__ ("popq %r11\n\t"
-                        "popq %rcx\n\t");*/
-  //kprintf("syscall handle\n");
   syscall_params *params = (syscall_params *)kmalloc(4096, NULL);
 
 #if 1
@@ -116,78 +105,6 @@ void syscall_handle(){
   __asm__ __volatile__ ("addq $0x8, %rsp\n\t");
   __asm__ __volatile__ ("sysretq\n\t");
 }
-
-/*void syscall_handle(){
-  __asm__ __volatile__ ("pushq %rax\n\t"
-                        "pushq %rbx\n\t"
-												"pushq %rcx\n\t"
-												"pushq %rdx\n\t"
-                        "pushq %rsi\n\t"
-												"pushq %rdi\n\t"
-												"pushq %rbp\n\t"
-												"pushq %r8\n\t"
-												"pushq %r9\n\t"
-												"pushq %r10\n\t"
-												"pushq %r11\n\t"
-												"pushq %r12\n\t"
-												"pushq %r13\n\t"
-												"pushq %r14\n\t"
-												"pushq %r15\n\t"
-												"movq %rdx, %r9\n\t"
-                        "movq %rax, %r15\n\t");
-  uint64_t user_rsp, user_rcx, user_r11;
-  uint64_t kernel_rsp = (&pcb_struct[current_process])->rsp;
-  syscall_params params;
-  //save the user stack into rax and load kernel stack
-  __asm__ __volatile__ ("movq %%rsp, %%rbx\n\t"
-                        "movq %0, %%rsp\n\t"
-                        :
-                        :"m"(kernel_rsp)
-                        :"rcx","r11","r15","rdi","rsi","rdx","r10");
-  //save the user stack,rip and rflags that are stored in rbx, rcx and r11 respectively
-  __asm__ __volatile__ ("movq %%rbx, %0\n\t"
-                        "movq %%rcx, %1\n\t"
-                        "movq %%r11, %2\n\t"
-                        "movq %%r15, %3\n\t"
-                        "movq %%rdi, %4\n\t"
-                        "movq %%rsi, %5\n\t"
-                        "movq %%r9, %6\n\t"
-                        "movq %%r10, %7\n\t"
-                        :"=m"(user_rsp), "=m"(user_rcx), "=m"(user_r11), "=m"(params.sysnum), "=m"(params.p1),
-                        "=m"(params.p2), "=m"(params.p3), "=m"(params.p4) 
-                        :
-                        :"rbx","rcx","r11","rax");
-
-  //kprintf("syscall_handle 1 buf = %x\n", params.p2);
-  sysfunc[params.sysnum](&params);
-  //kprintf("syscall_handle 2 buf = %x\n", params.p2);
-
-  __asm__ __volatile__ ("movq %1, %%rcx\n\t"
-                        "movq %2, %%r11\n\t"
-                        "movq %0, %%rsp\n\t"
-                        //"movq %3, %%rsi\n\t"
-												"popq %%r15\n\t"
-												"popq %%r14\n\t"
-												"popq %%r13\n\t"
-												"popq %%r12\n\t"
-												"popq %%r11\n\t"
-												"popq %%r10\n\t"
-												"popq %%r9\n\t"
-												"popq %%r8\n\t"
-                        "popq %%rbp\n\t"
-												"popq %%rdi\n\t"
-												"popq %%rsi\n\t"
-												"popq %%rdx\n\t"
-												"popq %%rcx\n\t"
-												"popq %%rbx\n\t"
-												"popq %%rax\n\t"
-                        :
-                        :"m"(user_rsp), "m"(user_rcx), "m"(user_r11), "m"(params.p2)
-                        :);
-
-  __asm__ __volatile__ ("sysretq\n\t");
-}*/
-
 
 uint64_t _syswrite(syscall_params *params){
 	//kprintf("you are in write p2 = %x, p3 = %d\n", params->p2, params->p3);
