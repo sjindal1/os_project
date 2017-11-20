@@ -65,6 +65,19 @@ void user_process_1(){
   }
 }
 
+void trialwrite(uint8_t *t)
+{
+    __asm__ __volatile__ ("movq $1, %%rax\n\t"
+                        "movq $1, %%rdi\n\t"
+                        "movq %0, %%rsi\n\t"
+                        "movq $25, %%rdx\n\t"
+                        "syscall\n\t"
+                        :
+                        :"m"(t)
+                        :"rsp","rax","rdi","rsi","rdx", "rcx", "r11");
+  return;
+}
+
 void user_ring3_process() {
   kprintf("This is ring 3 user process 1\n");
   /*uint64_t __err;
@@ -76,29 +89,30 @@ void user_ring3_process() {
                         :"0" (57));*/
   uint8_t bufee[] = "hello\nsecond\nthird\nfourth";
   uint8_t *buf1 = bufee;
-  uint32_t a =1,b=0;
+  /*uint32_t a =1,b=0;
   int c=a+b;
-  uint32_t *intp = &a;
-  uint32_t len = 25;
-  kprintf("buf add -> %p & %p %d %x %d\n", buf1, &buf1, a, intp, c);
-#if 1
+  uint32_t *intp = &a;*/
+  //uint32_t len = 25;
+  //kprintf("buf add -> %p & %p %d %x %d\n", buf1, &buf1, a, intp, c);
+  trialwrite(buf1);
+#if 0
   uint32_t __err = 0;
   __asm__ __volatile__ ("syscall"
         : "=a" (__err) 
         : "0" (1), "b" ((uint64_t)(a)), "c" ((uint64_t)(buf1)), "d" ((uint64_t)(len)));
 #else
-  __asm__ __volatile__ ("movq $1, %%rax\n\t"
-                        "movq %1, %%rdi\n\t"
+/*  __asm__ __volatile__ ("movq $1, %%rax\n\t"
+                        "movq $1, %%rdi\n\t"
                         "movq %0, %%rsi\n\t"
                         "movq $25, %%rdx\n\t"
                         "syscall\n\t"
                         :
-                        :"m"(buf1), "m"(a)
+                        :"m"(buf1)
                         :"rsp","rax","rdi","rsi","rdx", "rcx", "r11");
-#endif
-  kprintf("buf1 add return- %p & %p %d %x %d\n", buf1, &buf1, a, intp, c);
-  
+*/#endif
+  //kprintf("buf1 add return- %p & %p %d %x %d\n", buf1, &buf1, a, intp, c);
 
+#if 0
   uint8_t buf2[256];
   uint8_t *buf3 = buf2;
   for(int i = 0;i<2;i++){
@@ -133,7 +147,7 @@ void user_ring3_process() {
     kprintf("returned from write\n");
   }
 
-
+#endif
 
   //kprintf("returned from syscall\n");
   while(1){};
@@ -149,6 +163,8 @@ void save_rsp(){
   uint64_t rsp;
   __asm__ __volatile__ ("movq %%rsp, %0" : "=m"(rsp) : : );
   set_tss_rsp((void *)rsp);
+  uint64_t curr_proc_pcb = (uint64_t)&pcb_struct[current_process];
+  wrmsr(0xC0000102, curr_proc_pcb);  
 }
 
 uint64_t power(uint64_t num, uint64_t pow){

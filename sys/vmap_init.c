@@ -230,10 +230,11 @@ uint64_t* get_free_pages(uint32_t no_of_pages){
   }
   return start_add->start;
 }
-
+//TODO it expects physical address but we will always pass virtual address the implementation needs to be changed
+//we need something like kfree
 //add the page to the required index in the array and set the links correctly
 void free(uint64_t* address){
-  int page_index = (uint64_t)address/4096;
+  uint64_t page_index = (uint64_t)address/4096;
   page_frame_t *t_start = head + page_index;
   int no_of_pages = t_start->info >> 32;
   page_frame_t *t_end = head + (page_index + no_of_pages -1);

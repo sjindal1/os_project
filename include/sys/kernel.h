@@ -27,6 +27,7 @@ struct pcb
 {
   uint64_t pid;
   uint64_t rsp;
+  uint64_t user_rsp;
   uint64_t cr3;
   uint64_t *kstack;
   //enum { RUNNING, SLEEPING, ZOMBIE } state;

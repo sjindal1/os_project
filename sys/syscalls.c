@@ -2,6 +2,7 @@
 #include <sys/kprintf.h>
 #include <sys/kernel.h>
 #include <sys/vfs.h>
+#include <sys/paging.h>
 #include <sys/syscalls.h>
 
 uint64_t _syswrite(syscall_params *params);
@@ -36,7 +37,86 @@ void init_syscalls(){
   kprintf("efer ->%x, star -> %x, lstar -> %x, cstar -> %x, sfmask -> %x\n", efer, star, lstar, cstar, sfmask);
 }
 
+void save_params(){
+
+}
+
 void syscall_handle(){
+	__asm__ __volatile__ ("swapgs\n\t"
+												"movq %rsp, %gs:16\n\t"
+												"movq %gs:8, %rsp\n\t"
+												"pushq %gs:16\n\t"
+												"swapgs\n\t"
+												"pushq %rax\n\t"
+                        "pushq %rbx\n\t"
+												"pushq %rcx\n\t"
+												"pushq %rdx\n\t"
+                        "pushq %rsi\n\t"
+												"pushq %rdi\n\t"
+												"pushq %rbp\n\t"
+												"pushq %r8\n\t"
+												"pushq %r9\n\t"
+												"pushq %r10\n\t"
+												"pushq %r11\n\t"
+												"pushq %r12\n\t"
+												"pushq %r13\n\t"
+												"pushq %r14\n\t"
+												"pushq %r15\n\t");
+
+	__asm__ __volatile__ ("movq %rax, %r15\n\t"
+												"movq %rdi, %r14\n\t"
+												"movq %rsi, %r13\n\t"
+												"movq %rdx, %r12");
+
+  /*uint64_t kernel_rsp = (&pcb_struct[current_process])->rsp;
+  __asm__ __volatile__ ("movq %0, %%rsp\n\t"
+                        "pushq %%rcx\n\t"
+                        "pushq %%r11\n\t"
+                       :
+                       :"m"(kernel_rsp)
+                       :);
+  
+  __asm__ __volatile__ ("popq %r11\n\t"
+                        "popq %rcx\n\t");*/
+  //kprintf("syscall handle\n");
+  syscall_params *params = (syscall_params *)kmalloc(4096, NULL);
+
+#if 1
+  __asm__ __volatile__ ("movq %%r15, %0\n\t"
+                        "movq %%r14, %1\n\t"
+                        "movq %%r13, %2\n\t"
+                        "movq %%r12, %3\n\t"
+                        "movq %%r10, %4\n\t"
+                        :"=m"(params->sysnum), "=m"(params->p1),"=m"(params->p2), 
+                        "=m"(params->p3), "=m"(params->p4) 
+                        :
+                        :"r11","rcx","memory");
+#endif
+  kprintf("syscall_handle 1 sysnum -> %x, p1 - %x, p2- %x, p3- %x, p4 - %x\n",params->sysnum, params->p1, params->p2, params->p3, params->p4);
+  sysfunc[params->sysnum](params);
+
+  //free((uint64_t *)params);
+
+	__asm__ __volatile__ ("popq %r15\n\t"
+												"popq %r14\n\t"
+												"popq %r13\n\t"
+												"popq %r12\n\t"
+												"popq %r11\n\t"
+												"popq %r10\n\t"
+												"popq %r9\n\t"
+												"popq %r8\n\t"
+                        "popq %rbp\n\t"
+												"popq %rdi\n\t"
+												"popq %rsi\n\t"
+												"popq %rdx\n\t"
+												"popq %rcx\n\t"
+												"popq %rbx\n\t"
+												"popq %rax\n\t"
+												"popq %rsp\n\t");
+  __asm__ __volatile__ ("sysretq\n\t");
+}
+
+/*void syscall_handle(){
   __asm__ __volatile__ ("pushq %rax\n\t"
                         "pushq %rbx\n\t"
 												"pushq %rcx\n\t"
@@ -105,7 +185,7 @@ void syscall_handle(){
                         :);
 
   __asm__ __volatile__ ("sysretq\n\t");
-}
+}*/
 
 
 uint64_t _syswrite(syscall_params *params){
