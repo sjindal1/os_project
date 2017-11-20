@@ -65,8 +65,9 @@ void user_process_1(){
   }
 }
 
-void trialwrite(uint8_t *t)
+uint64_t trialwrite(uint8_t *t)
 {
+  uint64_t ret = 0;
     __asm__ __volatile__ ("movq $1, %%rax\n\t"
                         "movq $1, %%rdi\n\t"
                         "movq %0, %%rsi\n\t"
@@ -75,8 +76,23 @@ void trialwrite(uint8_t *t)
                         :
                         :"m"(t)
                         :"rsp","rax","rdi","rsi","rdx", "rcx", "r11");
-  return;
+  return ret;
 }
+
+uint64_t trialread(uint8_t *tread)
+{
+  uint64_t ret = 0;
+    __asm__ __volatile__ ("movq $0, %%rax\n\t"
+                          "movq $0, %%rdi\n\t"
+                          "movq %0, %%rsi\n\t"
+                          "movq $128, %%rdx\n\t"
+                          "syscall\n\t"
+                          :
+                          :"m"(tread)
+                          :"rsp","rcx","r11","rdi","rsi","rdx","r10");
+  return ret;
+}
+
 
 void user_ring3_process() {
   kprintf("This is ring 3 user process 1\n");
@@ -111,6 +127,12 @@ void user_ring3_process() {
                         :"rsp","rax","rdi","rsi","rdx", "rcx", "r11");
 */#endif
   //kprintf("buf1 add return- %p & %p %d %x %d\n", buf1, &buf1, a, intp, c);
+
+uint8_t buf2[256];
+uint8_t *bufptr = buf2;
+trialread(bufptr);
+
+trialwrite(bufptr);
 
 #if 0
   uint8_t buf2[256];

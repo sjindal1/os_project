@@ -92,7 +92,7 @@ void syscall_handle(){
                         :
                         :"r11","rcx","memory");
 #endif
-  kprintf("syscall_handle 1 sysnum -> %x, p1 - %x, p2- %x, p3- %x, p4 - %x\n",params->sysnum, params->p1, params->p2, params->p3, params->p4);
+  //kprintf("syscall_handle 1 sysnum -> %x, p1 - %x, p2- %x, p3- %x, p4 - %x\n",params->sysnum, params->p1, params->p2, params->p3, params->p4);
   sysfunc[params->sysnum](params);
 
   //free((uint64_t *)params);
@@ -113,6 +113,7 @@ void syscall_handle(){
 												"popq %rbx\n\t"
 												"popq %rax\n\t"
 												"popq %rsp\n\t");
+  __asm__ __volatile__ ("addq $0x8, %rsp\n\t");
   __asm__ __volatile__ ("sysretq\n\t");
 }
 
