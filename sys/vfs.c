@@ -98,3 +98,25 @@ uint32_t _vfswrite(int16_t fd, uint8_t* buffer, uint16_t size)
 }
 
 
+void _vfsseek(int16_t fd, uint32_t offset)
+{
+       if(pcb_struct[current_process].mfdes[0].status == 0)
+       {
+               return; 
+       }
+       //get the fd type
+       uint32_t fdtype = pcb_struct[current_process].mfdes[fd].type;
+
+       if(fdtype == TERMINAL)
+       {
+               kprintf("_vfsseek: Seek is not supported for terminal = %x\n", fd);
+       }
+       else if(fdtype == TARFS)
+       {
+               pcb_struct[current_process].mfdes[fd].offset = offset;
+       }
+
+       return;
+}
+
+

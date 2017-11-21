@@ -40,4 +40,6 @@ typedef struct {
   Elf64_Xword   p_align;
 } Elf64_Phdr;
 
+uint32_t loadelffile(pcb *p, int16_t efd);
+
 #endif

@@ -13,3 +13,5 @@ uint32_t _vfsread(int16_t filedescriptor, uint8_t* buffer, uint16_t size);
 
 uint32_t _vfswrite(int16_t filedescriptor, uint8_t* buffer, uint16_t size);
 
+void _vfsseek(int16_t fd, uint32_t offset);
+

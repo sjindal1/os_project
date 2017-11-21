@@ -6,6 +6,7 @@
 #include <sys/tarfs.h>
 #include <sys/vfs.h>
 #include <sys/syscalls.h>
+#include <sys/elf64.h>
 
 
 uint8_t bufpruthvi[] = {"hello\nsecond\nthird\nfourth"};
@@ -170,6 +171,7 @@ void kernel_1_thread(){
 
   kprintf("bin/sbush fd - %d",fd);
 
+  loadelffile(&pcb_struct[current_process], fd);
   //switching to ring 3
   /*uint64_t stack = (uint64_t)kmalloc(4096,NULL);
   stack+= 4088;
