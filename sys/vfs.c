@@ -9,14 +9,41 @@
 
 extern tarfsinfo ftarinfo[256];
 
-//returning the addr where the file located
-uint64_t _vfsopen(uint8_t* filename)
-{
-	// only tarfs is supported to open the file 
-	return _tarfsopen(filename);
+int16_t get_first_free_fd(){
+	int32_t fd = 3;
+	for( ;fd<16;fd++){
+		if(pcb_struct[current_process].mfdes[fd].status == 0)
+		  break;
+	}
+	if(fd == 16){
+		return -1;
+	}else{
+		return fd;
+	}
 }
 
-uint32_t _vfsread(uint16_t fd, uint8_t *buffer, uint16_t size)
+//returning the addr where the file located
+int16_t _vfsopen(uint8_t* filename)
+{
+	uint64_t fileaddr = _tarfsopen(filename);
+	if(fileaddr == 0){
+		return -1;
+	}
+	int16_t fd = get_first_free_fd();
+	// only tarfs is supported to open the file
+	if(fd == -1){
+		return -1;
+	}else{
+		pcb_struct[current_process].mfdes[fd].status = 1;
+		pcb_struct[current_process].mfdes[fd].type = TARFS;
+		pcb_struct[current_process].mfdes[fd].addr = fileaddr;
+		pcb_struct[current_process].mfdes[fd].offset = 0;
+		pcb_struct[current_process].mfdes[fd].permissions = 0xff;
+	} 
+	return fd;
+}
+
+uint32_t _vfsread(int16_t fd, uint8_t *buffer, uint16_t size)
 {
 	if(pcb_struct[current_process].mfdes[0].status == 0)
 	{
@@ -44,7 +71,7 @@ uint32_t _vfsread(uint16_t fd, uint8_t *buffer, uint16_t size)
 	return retvalue;
 }
 
-uint32_t _vfswrite(uint16_t fd, uint8_t* buffer, uint16_t size)
+uint32_t _vfswrite(int16_t fd, uint8_t* buffer, uint16_t size)
 {
 	if(pcb_struct[current_process].mfdes[0].status == 0)
 	{

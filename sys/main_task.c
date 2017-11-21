@@ -4,6 +4,7 @@
 #include <sys/paging.h>
 #include <sys/gdt.h>
 #include <sys/tarfs.h>
+#include <sys/vfs.h>
 #include <sys/syscalls.h>
 
 
@@ -162,13 +163,18 @@ void kernel_1_thread(){
   }
   init_tarfs();
 
+  char filename[] = "bin/sbush";
+  uint8_t *fileptr = (uint8_t *)filename;
 
+  int16_t fd = _vfsopen(fileptr);
+
+  kprintf("bin/sbush fd - %d",fd);
 
   //switching to ring 3
-  uint64_t stack = (uint64_t)kmalloc(4096,NULL);
+  /*uint64_t stack = (uint64_t)kmalloc(4096,NULL);
   stack+= 4088;
   save_rsp();
-  switch_to_ring3((uint64_t *)&user_ring3_process, stack);
+  switch_to_ring3((uint64_t *)&user_ring3_process, stack);*/
 
   while(1){};
 }

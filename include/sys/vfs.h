@@ -7,9 +7,9 @@
 //4. Network
 // through FDs.
 
-uint64_t _vfsopen(uint8_t* filename);
+int16_t _vfsopen(uint8_t* filename);
 
-uint32_t _vfsread(uint16_t filedescriptor, uint8_t* buffer, uint16_t size);
+uint32_t _vfsread(int16_t filedescriptor, uint8_t* buffer, uint16_t size);
 
-uint32_t _vfswrite(uint16_t filedescriptor, uint8_t* buffer, uint16_t size);
+uint32_t _vfswrite(int16_t filedescriptor, uint8_t* buffer, uint16_t size);
 
