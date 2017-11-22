@@ -47,7 +47,7 @@ void syscall_handle(){
 												"movq %gs:8, %rsp\n\t"
 												"pushq %gs:16\n\t"
 												"swapgs\n\t"
-												"pushq %rax\n\t"
+												//"pushq %rax\n\t"
                         "pushq %rbx\n\t"
 												"pushq %rcx\n\t"
 												"pushq %rdx\n\t"
@@ -82,9 +82,12 @@ void syscall_handle(){
                         :"r11","rcx","memory");
 #endif
   //kprintf("syscall_handle 1 sysnum -> %x, p1 - %x, p2- %x, p3- %x, p4 - %x\n",params->sysnum, params->p1, params->p2, params->p3, params->p4);
-  sysfunc[params->sysnum](params);
+  uint64_t ret_val = sysfunc[params->sysnum](params);
 
   //free((uint64_t *)params);
+	__asm__ __volatile__ ("movq %0, %%rax\n\t"
+												:
+												:"m"(ret_val));
 
 	__asm__ __volatile__ ("popq %r15\n\t"
 												"popq %r14\n\t"
@@ -100,7 +103,7 @@ void syscall_handle(){
 												"popq %rdx\n\t"
 												"popq %rcx\n\t"
 												"popq %rbx\n\t"
-												"popq %rax\n\t"
+												//"popq %rax\n\t"
 												"popq %rsp\n\t");
   __asm__ __volatile__ ("addq $0x8, %rsp\n\t");
   __asm__ __volatile__ ("sysretq\n\t");
@@ -125,6 +128,5 @@ uint64_t _sysread(syscall_params *params){
 	//kprintf("returning from sysread user buf - %x\n", (params->p2));
 	return 1;*/
 
-	_vfsread(params->p1, (uint8_t *)params->p2, params->p3);
-	return 1;
+	return _vfsread(params->p1, (uint8_t *)params->p2, params->p3);;
 }

@@ -72,10 +72,11 @@ uint64_t trialwrite(uint8_t *t)
   uint64_t ret = 0;
     __asm__ __volatile__ ("movq $1, %%rax\n\t"
                         "movq $1, %%rdi\n\t"
-                        "movq %0, %%rsi\n\t"
+                        "movq %1, %%rsi\n\t"
                         "movq $25, %%rdx\n\t"
                         "syscall\n\t"
-                        :
+                        "movq %%rax, %0\n\t"
+                        :"=m"(ret)
                         :"m"(t)
                         :"rsp","rax","rdi","rsi","rdx", "rcx", "r11");
   return ret;
@@ -86,10 +87,11 @@ uint64_t trialread(uint8_t *tread)
   uint64_t ret = 0;
     __asm__ __volatile__ ("movq $0, %%rax\n\t"
                           "movq $0, %%rdi\n\t"
-                          "movq %0, %%rsi\n\t"
+                          "movq %1, %%rsi\n\t"
                           "movq $128, %%rdx\n\t"
                           "syscall\n\t"
-                          :
+                          "movq %%rax, %0\n\t"
+                          :"=m"(ret)
                           :"m"(tread)
                           :"rsp","rcx","r11","rdi","rsi","rdx","r10");
   return ret;
@@ -108,15 +110,21 @@ void user_ring3_process() {
   uint8_t bufee[] = "hello\nsecond\nthird\nfourth";
   uint8_t *buf1 = bufee;
 
-  trialwrite(buf1);
+  uint64_t ret = trialwrite(buf1);
+
+  //kprintf("retrun value after first write %d\n",ret);
   //kprintf("buf1 add return- %p & %p %d %x %d\n", buf1, &buf1, a, intp, c);
 
   uint8_t buf2[256];
   uint8_t *bufptr = buf2;
-  trialread(bufptr);
+  ret = trialread(bufptr);
 
-  trialwrite(bufptr);
+  kprintf("retrun value after first read %d\n",ret);
 
+
+  ret = trialwrite(bufptr);
+
+  kprintf("retrun value after second write %d\n",ret);
 
   //kprintf("returned from syscall\n");
   while(1){};
@@ -173,10 +181,10 @@ void kernel_1_thread(){
 
   loadelffile(&pcb_struct[current_process], fd);
   //switching to ring 3
-  /*uint64_t stack = (uint64_t)kmalloc(4096,NULL);
+  uint64_t stack = (uint64_t)kmalloc(4096,NULL);
   stack+= 4088;
   save_rsp();
-  switch_to_ring3((uint64_t *)&user_ring3_process, stack);*/
+  switch_to_ring3((uint64_t *)&user_ring3_process, stack);
 
   while(1){};
 }
