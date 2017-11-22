@@ -179,18 +179,19 @@ void kernel_1_thread(){
 
   kprintf("bin/sbush fd - %d",fd);
 
-  loadelffile(&pcb_struct[current_process], fd);
-  
-  /*uint64_t *test_free = kmalloc(4096,NULL);
-  kfree(test_free);   
-  test_free = kmalloc(4096,NULL);
-  kfree(test_free);*/
+  loadelffile(&pcb_struct[current_process], fd);  
+
+  /*uint64_t *test_pt = (uint64_t *)0xFFFFFFFF90012000;
+
+  *test_pt = 1000;*/
 
   //switching to ring 3
   uint64_t stack = (uint64_t)kmalloc(4096,NULL);
+  kprintf("stack - %x\n", stack);
   stack+= 4088;
   save_rsp();
-  switch_to_ring3((uint64_t *)&user_ring3_process, stack);
+  //switch_to_ring3((uint64_t *)&user_ring3_process, stack);
+  switch_to_ring3((uint64_t *)pcb_struct[current_process]._start_addr, stack);
   
   while(1){};
 }

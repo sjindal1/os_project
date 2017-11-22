@@ -12,6 +12,8 @@ int free_pcb=0;
 int no_of_task=0;
 int current_process=0;
 
+extern uint64_t pf_error_code, pf_cr2;
+
 void yield(){
   //round robin scheduler
   pcb *me = &pcb_struct[current_process],*next = NULL;
@@ -141,4 +143,18 @@ void create_pcb_stack(uint64_t *user_cr3,uint64_t va_func){
 	// update the pcb structure
   free_pcb++;
   no_of_task++;
+}
+
+//TODO
+//Parse complete VMA and properties to check if it it executable and we need to copy
+//or it is dynamic memory allocation in that case just allocate a page and create mapping
+void page_fault_handle(){
+	kprintf("cr2 - %x, pf_error_code - %x\n", pf_cr2, pf_error_code);
+	uint64_t *p_add = get_free_page();
+	uint64_t *va_start = (uint64_t *)(pf_cr2 & 0xFFFFFFFFFFFFF000); 
+  create_pf_pt_entry(p_add, 1 , (uint64_t)va_start);
+  uint64_t *elf_start = (uint64_t *)pcb_struct[current_process].elf_start;
+  for(int i=0;i<512;i++){
+  	va_start[i] = elf_start[i];
+  }
 }

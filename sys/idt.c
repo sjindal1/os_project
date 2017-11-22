@@ -13,6 +13,7 @@ void _x86_64_isr_32();
 
 void _x86_64_isr_6();
 
+void _x86_64_page_fault();
 
 struct idt_descriptor {
   uint16_t offset_1;
@@ -36,6 +37,7 @@ struct idt_descriptor idt[MAX_IDT];
 static struct idtr_t idtr = { (sizeof(struct idt_descriptor) * MAX_IDT) -1, (uint64_t)idt };
 
 void init_idt(){
+  uint64_t isr_page_fault = (uint64_t)&_x86_64_page_fault;
   uint64_t isr_point_6 = (uint64_t)&_x86_64_isr_6;
   uint64_t isr_point_32 = (uint64_t)&_x86_64_isr_32;
   uint64_t isr_point = (uint64_t)&_x86_64_isr;
@@ -49,6 +51,9 @@ void init_idt(){
     struct idt_descriptor *idt_element = &idt[i];
     set_idt_values(isr_point, 0x08, 0x8E, idt_element);
   }
+
+  struct idt_descriptor *idt_page_fault = &idt[14];
+  set_idt_values(isr_page_fault, 0x08, 0x8E, idt_page_fault);
 
   struct idt_descriptor *idt_element = &idt[6];
   set_idt_values(isr_point_6, 0x08, 0x8E, idt_element);

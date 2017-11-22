@@ -39,6 +39,7 @@ int16_t _vfsopen(uint8_t* filename)
 		pcb_struct[current_process].mfdes[fd].addr = fileaddr;
 		pcb_struct[current_process].mfdes[fd].offset = 0;
 		pcb_struct[current_process].mfdes[fd].permissions = 0xff;
+		pcb_struct[current_process].elf_start = fileaddr;
 	} 
 	return fd;
 }

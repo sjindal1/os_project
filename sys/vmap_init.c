@@ -123,8 +123,6 @@ void create4KbPages(uint32_t *modulep,void *physbase, void *physfree){
   return;
 }
 
-void create_page_table_entry(uint64_t *physical_add, uint64_t no_of_pages , uint64_t virtual_add);
-
 uint64_t* get_free_self_ref_user_page(){
   page_frame_t *t = free_page;
   t->info = 1 | (uint64_t)1 << 32;
@@ -604,4 +602,35 @@ uint64_t* create_user_page_table(uint64_t va_func,uint64_t pa_func,uint32_t no_o
     }
   }
   return user_page_info.pml4;
+}
+
+void create_pf_pt_entry(uint64_t *p_add, uint32_t size, uint64_t v_add){
+  uint32_t pf_pml4_off = get_pml4(v_add);
+  uint32_t pf_pdp_off = get_pdp(v_add);
+  uint32_t pf_pd_off = get_pd(v_add);
+  uint32_t pf_pt_off = get_pt(v_add);
+
+  uint64_t *va_pml4 = (uint64_t *)0xFFFFFFFFFFFFF000;
+  if((va_pml4[pf_pml4_off] & 0x1) == 0){ //check for present bit 
+    uint64_t pf_pdp = (uint64_t)get_free_page();
+    va_pml4[pf_pml4_off] = pf_pdp | USERPAG;
+  }
+
+  uint64_t *va_pdp = (uint64_t *)(0xFFFFFFFFFFE00000 | (uint64_t)pf_pml4_off <<12);
+  if((va_pdp[pf_pdp_off] & 0x1) == 0){ 
+    uint64_t pf_pd = (uint64_t)get_free_page();
+    va_pdp[pf_pdp_off] = pf_pd | USERPAG;
+  }
+
+  uint64_t *va_pd = (uint64_t *)(0xFFFFFFFFC0000000 | (uint64_t)pf_pml4_off <<21 | (uint64_t)pf_pdp_off <<12);
+  if((va_pd[pf_pd_off] & 0x1) == 0){ 
+    uint64_t pf_pt = (uint64_t)get_free_page();
+    va_pd[pf_pd_off] = pf_pt | USERPAG;
+  }
+
+  uint64_t *va_pt = (uint64_t *)(0xFFFFFF8000000000 | (uint64_t)pf_pml4_off << 30 | (uint64_t)pf_pdp_off << 21 | (uint64_t)pf_pd_off << 12);
+  if((va_pt[pf_pt_off] & 0x1) == 0){ 
+    va_pt[pf_pt_off] = (uint64_t)p_add | USERPAG;
+  }
+
 }
