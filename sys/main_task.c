@@ -181,13 +181,17 @@ void kernel_1_thread(){
 
   loadelffile(&pcb_struct[current_process], fd);
   
+  /*uint64_t *test_free = kmalloc(4096,NULL);
+  kfree(test_free);   
+  test_free = kmalloc(4096,NULL);
+  kfree(test_free);*/
 
   //switching to ring 3
-  /*uint64_t stack = (uint64_t)kmalloc(4096,NULL);
+  uint64_t stack = (uint64_t)kmalloc(4096,NULL);
   stack+= 4088;
   save_rsp();
   switch_to_ring3((uint64_t *)&user_ring3_process, stack);
-  */
+  
   while(1){};
 }
 

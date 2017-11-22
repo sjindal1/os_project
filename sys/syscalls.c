@@ -40,7 +40,7 @@ void init_syscalls(){
 
 uint64_t kernel_syscall()
 {
-  	uint64_t retval = 0;
+  uint64_t retval = 0;
 	syscall_params *params = (syscall_params *)kmalloc(4096, NULL);
 
 	__asm__ __volatile__ ("movq %%r15, %0\n\t"
@@ -55,6 +55,8 @@ uint64_t kernel_syscall()
 	
 	  //kprintf("syscall_handle 1 sysnum -> %x, p1 - %x, p2- %x, p3- %x, p4 - %x\n",params->sysnum, params->p1, params->p2, params->p3, params->p4);
 	retval = sysfunc[params->sysnum](params);
+
+	kfree((uint64_t *)params);
 
 	return retval;
 }

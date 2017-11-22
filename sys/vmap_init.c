@@ -169,6 +169,17 @@ void create_page_table_entry(uint64_t *physical_add, uint64_t no_of_pages , uint
   }
 }
 
+void kfree(uint64_t *v_add){
+  uint64_t pt_off = get_pt((uint64_t)v_add);
+  int64_t sv_add = (int64_t)v_add;
+  sv_add = sv_add >> 9;
+  uint64_t *pt_va = (uint64_t *)(sv_add & 0xFFFFFFFFFFFFF000);
+  uint64_t p_add = pt_va[pt_off];
+  //kprintf("v_addr - %x, sv_add - %x, pt-off - %x, p_add - %x, p_add_prev - %x\n",v_add, sv_add, pt_off, p_add, pt_va[pt_off-1]);
+  free((uint64_t *)p_add);
+  pt_va[pt_off] = 0x2;
+}
+
 uint64_t* kmalloc(uint64_t size, uint64_t *pa_add){
   uint32_t no_of_pages = (size + 4095)/4096;
   uint64_t *start_add = get_free_pages(no_of_pages);

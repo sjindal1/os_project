@@ -23,6 +23,8 @@ uint64_t* kernel_init();
 
 uint64_t* kmalloc(uint64_t size, uint64_t*);
 
+void kfree(uint64_t*);
+
 uint64_t* create_user_page_table(uint64_t va_func,uint64_t pa_func,uint32_t no_of_pages);
 
 typedef struct page_dir page_dir;
