@@ -37,9 +37,30 @@ void init_syscalls(){
   kprintf("efer ->%x, star -> %x, lstar -> %x, cstar -> %x, sfmask -> %x\n", efer, star, lstar, cstar, sfmask);
 }
 
-void save_params(){
 
+uint64_t kernel_syscall()
+{
+  	uint64_t retval = 0;
+	syscall_params *params = (syscall_params *)kmalloc(4096, NULL);
+
+	__asm__ __volatile__ ("movq %%r15, %0\n\t"
+		                "movq %%r14, %1\n\t"
+		                "movq %%r13, %2\n\t"
+		                "movq %%r12, %3\n\t"
+		                "movq %%r10, %4\n\t"
+		                :"=m"(params->sysnum), "=m"(params->p1),"=m"(params->p2), 
+		                "=m"(params->p3), "=m"(params->p4) 
+		                :
+		                :"memory");
+	
+	  //kprintf("syscall_handle 1 sysnum -> %x, p1 - %x, p2- %x, p3- %x, p4 - %x\n",params->sysnum, params->p1, params->p2, params->p3, params->p4);
+	retval = sysfunc[params->sysnum](params);
+
+	return retval;
 }
+#if 0
+
+//#else
 
 void syscall_handle(){
 	__asm__ __volatile__ ("swapgs\n\t"
@@ -105,9 +126,10 @@ void syscall_handle(){
 												"popq %rbx\n\t"
 												//"popq %rax\n\t"
 												"popq %rsp\n\t");
-  __asm__ __volatile__ ("addq $0x8, %rsp\n\t");
+  __asm__ __volatile__ ("addq $0x10, %rsp\n\t");
   __asm__ __volatile__ ("sysretq\n\t");
 }
+#endif
 
 uint64_t _syswrite(syscall_params *params){
 	//kprintf("you are in write p2 = %x, p3 = %d\n", params->p2, params->p3);
