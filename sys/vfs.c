@@ -59,6 +59,7 @@ uint32_t _vfsread(int16_t fd, uint8_t *buffer, uint16_t size)
 	}
 	else if(fdtype == TARFS)
 	{
+		//kprintf("vfs offsets read %x \n", pcb_struct[current_process].mfdes[fd].offset);
 		uint64_t start_add = pcb_struct[current_process].mfdes[fd].addr + pcb_struct[current_process].mfdes[fd].offset;
 		retvalue = _tarfs_read(start_add, (uint8_t *)buffer, size);
 		pcb_struct[current_process].mfdes[fd].offset += retvalue;	
