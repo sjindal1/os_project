@@ -52,7 +52,7 @@ struct page_frame_t{
 #define _UB			0x4
 
 //#define KERNPAG		((_PB)|(_WB))
-#define KERNPAG   ((_PB)|(_WB)|(_UB))
+#define KERNPAG   ((_PB)|(_WB))
 #define USERPAG   ((_PB)|(_WB)|(_UB))
 
 #define GDT_ENTRY_KERNEL_CS		2

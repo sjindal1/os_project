@@ -628,9 +628,15 @@ void create_pf_pt_entry(uint64_t *p_add, uint32_t size, uint64_t v_add){
     va_pd[pf_pd_off] = pf_pt | USERPAG;
   }
 
+
   uint64_t *va_pt = (uint64_t *)(0xFFFFFF8000000000 | (uint64_t)pf_pml4_off << 30 | (uint64_t)pf_pdp_off << 21 | (uint64_t)pf_pd_off << 12);
-  if((va_pt[pf_pt_off] & 0x1) == 0){ 
+  /*if((va_pt[pf_pt_off] & 0x1) == 0){ 
     va_pt[pf_pt_off] = (uint64_t)p_add | USERPAG;
+  }*/
+  for(uint64_t j=0;j<size;j++){
+    va_pt[pf_pt_off] = (uint64_t)p_add | USERPAG;
+    pf_pt_off++;
+    p_add+=4096;
   }
 
 }
