@@ -634,3 +634,75 @@ void create_pf_pt_entry(uint64_t *p_add, uint32_t size, uint64_t v_add){
   }
 
 }
+
+
+// returns the new cr3 value
+uint64_t makepagetablecopy(uint64_t old_cr3)
+{
+  uint64_t new_cr3;
+  uint16_t i, j, k, m;
+  uint64_t *newpagepml4 = (uint64_t *)0xFFFFFFFF90002000;
+  uint64_t *newpagepdp = (uint64_t *)0xFFFFFFFF90003000;
+  uint64_t *newpagepd = (uint64_t *)0xFFFFFFFF90004000;
+  uint64_t *newpagept = (uint64_t *)0xFFFFFFFF90005000;
+
+  // get the page tables
+  // pml4
+  new_cr3 = (uint64_t) get_free_self_ref_user_page();
+  // map the page to 0xFFFFFFFF90002000 temporarily to copy
+  create_page_table_entry((uint64_t*)new_cr3, 1, (uint64_t) newpagepml4);
+  
+  uint64_t *va_cur_pml4 = (uint64_t *)0xFFFFFFFFFFFFF000;
+  
+  for(i = 0; i < 511; i++)    // dont overwrite the last entry
+  {
+    newpagepml4[i] = va_cur_pml4[i];
+    if(newpagepml4[i] != 0x2)   // writable is set
+    {
+      uint64_t *va_cur_pdp = (uint64_t *)(0xFFFFFFFFFFE00000 | (uint64_t)i <<12);
+
+      uint64_t *new_pdp = get_free_page();
+      create_page_table_entry(new_pdp, 1, (uint64_t) newpagepdp);
+
+      newpagepml4[i] = (uint64_t) new_pdp | 0x7;    // set the new entry and user accessible
+
+      for(j = 0; j < 512; j++)
+      {
+        newpagepdp[j] = va_cur_pdp[j];
+        if(newpagepdp[j] != 0x2)
+        {
+          uint64_t *va_cur_pd = (uint64_t *)(0xFFFFFFFFC0000000 | (uint64_t)i <<21 | (uint64_t)j <<12);
+
+          uint64_t *new_pd = get_free_page();
+          create_page_table_entry(new_pd, 1, (uint64_t) newpagepd);
+
+          newpagepdp[j] = (uint64_t) new_pd | 0x7;    // set the new entry and user accessible
+
+          for(k = 0; k < 512; k++)
+          {
+            newpagepd[k] = va_cur_pd[k];
+            if(newpagepd[k] != 0x2)
+            {
+              uint64_t *va_cur_pt = (uint64_t*) (0xFFFFFF8000000000 | (uint64_t)i << 30 | (uint64_t)j << 21 | (uint64_t)k << 12);
+              
+              uint64_t *new_pt = get_free_page();
+              create_page_table_entry(new_pt, 1, (uint64_t) newpagept);
+
+              newpagepd[k] = (uint64_t) new_pt | 0x7;
+
+              for(m = 0; m < 512; m++)
+              {
+                // setting 0X800 for COW
+                // setting 0x5 for USER | READONLY | PRESENT
+                va_cur_pt = (uint64_t*)((( (uint64_t) va_cur_pt & (uint64_t)0xFFFFFFFFFFFFF000) | 0x5) | 0x800); 
+                newpagept[m] = va_cur_pt[m];
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return new_cr3;
+}
