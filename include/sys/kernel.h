@@ -12,7 +12,7 @@ struct stvma{
 	uint64_t size;
 	uint64_t *next;
 	uint64_t offset_fs;
-	uint32_t permissions;
+	uint8_t permissions;
 };
 
 struct filedes{
@@ -36,6 +36,7 @@ struct pcb
   filedes mfdes[16];
   uint64_t _start_addr;			// Entry point from the elf header
   vma_type vma[32];
+  vma_type vma_stack;
   uint8_t numvma;				// number of valid VMA entries
   uint64_t elf_start;
 };

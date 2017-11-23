@@ -5,6 +5,7 @@
 .global switch_to_ring3
 .global rdmsr_read
 .global wrmsr_write
+.global switch_to_child
 
 switch_to:
 	// pushing all general purpose registers
@@ -129,6 +130,33 @@ wrmsr_write:
 	wrmsr;
 	ret;
 
+switch_to_child:
+// pid - rdi
+// new rsp - rsi
+// parent pcb - rdx
+// child pcb - rcx
+//	pushq rax;
+
+	mov %esp, %eax;
+	and $0xfff, %eax;
+	or %eax, %esi;
+
+	//subq $8, %rsp;
+	//subq $8, %rsi;
+
+	movq %rdi, -8(%rsp);
+	movq $0, -8(%rsi);
+
+	//addq $8, %rsp;
+	//addq $8, %rsi;
+
+	movq %rsi, 8(%rcx);
+
+	movq %rsp, 8(%rdx); 		// save my rsp value in pcb
+	movq 8(%rcx), %rsp; 		// update the rsp value with the next process stack
+	
+//	popq %rax;
+	ret;
 
 
 

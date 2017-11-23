@@ -8,6 +8,10 @@
 uint64_t _syswrite(syscall_params *params);
 uint64_t _sysread(syscall_params *params);
 uint64_t _sysexit(syscall_params *params);
+uint64_t _sysfork(syscall_params *params);
+
+void switch_to_child(uint32_t , uint64_t* , pcb*, pcb*);
+
 
 _syscallfunc_ sysfunc[100];
 
@@ -35,6 +39,7 @@ void init_syscalls(){
   uint64_t sfmask = rdmsr(0xC0000084);
   sysfunc[0] = &_sysread;
   sysfunc[1] = &_syswrite;
+  sysfunc[57] = &_sysfork;
   sysfunc[60] = &_sysexit;
   kprintf("efer ->%x, star -> %x, lstar -> %x, cstar -> %x, sfmask -> %x\n", efer, star, lstar, cstar, sfmask);
 }
@@ -91,3 +96,48 @@ uint64_t _sysexit(syscall_params *params){
 	pcb_struct[current_process].exit_status = 1;
 	return 0;
 }
+
+void create_pcb_copy(){
+  pcb_struct[free_pcb].pid = free_pcb;
+  pcb_struct[free_pcb].kstack = kmalloc(4096,NULL);
+  pcb_struct[free_pcb].rsp = (uint64_t)pcb_struct[free_pcb].kstack + 4088;
+  pcb_struct[free_pcb].cr3 = makepagetablecopy();
+  pcb_struct[free_pcb].user_rsp = pcb_struct[current_process].user_rsp;
+  pcb_struct[free_pcb].state = pcb_struct[current_process].state;
+  pcb_struct[free_pcb].exit_status = pcb_struct[current_process].exit_status;
+  pcb_struct[free_pcb]._start_addr = pcb_struct[current_process]._start_addr;
+  pcb_struct[free_pcb].numvma = pcb_struct[current_process].numvma;
+  pcb_struct[free_pcb].elf_start = pcb_struct[current_process].elf_start;
+
+  for(int i=0 ; i<16;i++){
+  	pcb_struct[free_pcb].mfdes[i].type = pcb_struct[current_process].mfdes[i].type;
+  	pcb_struct[free_pcb].mfdes[i].addr = pcb_struct[current_process].mfdes[i].addr;
+  	pcb_struct[free_pcb].mfdes[i].offset = pcb_struct[current_process].mfdes[i].offset;
+  	pcb_struct[free_pcb].mfdes[i].status = pcb_struct[current_process].mfdes[i].status;
+  	pcb_struct[free_pcb].mfdes[i].permissions = pcb_struct[current_process].mfdes[i].permissions;
+  }
+
+  for(int i=0 ; i<32;i++){
+  	pcb_struct[free_pcb].vma[i].startva = pcb_struct[current_process].vma[i].startva;
+  	pcb_struct[free_pcb].vma[i].size = pcb_struct[current_process].vma[i].size;
+  	pcb_struct[free_pcb].vma[i].next = pcb_struct[current_process].vma[i].next;
+  	pcb_struct[free_pcb].vma[i].offset_fs = pcb_struct[current_process].vma[i].offset_fs;
+  	pcb_struct[free_pcb].vma[i].permissions = pcb_struct[current_process].vma[i].permissions;
+  }
+
+  //make a copy of the parent stack
+  uint64_t *parent_stack = pcb_struct[current_process].kstack;
+  uint64_t *child_stack = pcb_struct[free_pcb].kstack;
+  for(int i = 0 ; i<512;i++){
+  	child_stack[i] = parent_stack[i];
+  }
+
+  switch_to_child(free_pcb, pcb_struct[free_pcb].kstack, &pcb_struct[current_process], &pcb_struct[free_pcb]);
+}
+
+uint64_t _sysfork(syscall_params *params){
+	create_pcb_copy();
+	free_pcb++;
+	return free_pcb;
+}
+

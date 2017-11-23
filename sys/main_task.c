@@ -189,6 +189,12 @@ void kernel_1_thread(){
 
   uint64_t *pa_add = get_free_pages(4);
 
+  pcb_struct[current_process].vma_stack.startva = stackadd;
+
+  pcb_struct[current_process].vma_stack.size = 4*4096;
+
+  pcb_struct[current_process].vma_stack.permissions = 0xff;
+
   create_pf_pt_entry(pa_add, 4, stackadd);
 
   stackadd += 3*4096;

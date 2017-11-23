@@ -33,6 +33,8 @@ void create_page_table_entry(uint64_t *physical_add, uint64_t no_of_pages , uint
 
 void create_pf_pt_entry(uint64_t *p_add, uint32_t size, uint64_t v_add);
 
+uint64_t makepagetablecopy();
+
 struct page_dir
 {
   uint64_t *pml4;

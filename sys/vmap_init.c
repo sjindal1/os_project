@@ -1,5 +1,6 @@
 #include <sys/defs.h>
 #include <sys/kprintf.h>
+#include <sys/kernel.h>
 #include <sys/paging.h>
 
 uint64_t get_pml4(uint64_t kermem);
@@ -310,9 +311,9 @@ uint64_t* kernel_init(){
   kernel_page_info.pml4 = get_free_self__ref_page();
   size+=4096;
   kernel_page_info.pdp = kernel_page_info.pml4;
-  kernel_page_info.pd = get_free_self__ref_page();
+  kernel_page_info.pd = get_free_page();
   size+=4096;
-  kernel_page_info.pt = get_free_self__ref_page();
+  kernel_page_info.pt = get_free_page();
   size+=4096;
   
   //kprintf("array_start -> %x, physbase ->%x, kernmem ->%x\n",table_end->start, (uint64_t)&physbase, (uint64_t)&kernmem);
@@ -321,11 +322,12 @@ uint64_t* kernel_init(){
   //Make all the entries in the pages as writeable but set the pages as not used.
   for(int i=0; i < 511; i++){
     kernel_page_info.pml4[i] = 0x00000002;
-    kernel_page_info.pdp[i] = 0x00000002;
+    //kernel_page_info.pdp[i] = 0x00000002;
+  }
+  for(int i=0; i < 511; i++){
     kernel_page_info.pd[i] = 0x00000002;
     kernel_page_info.pt[i] = 0x00000002;
   }
-
   pml4_off = get_pml4((uint64_t)&kernmem);
   pdp_off = get_pdp((uint64_t)&kernmem);
   pd_off = get_pd((uint64_t)&kernmem);
@@ -610,21 +612,29 @@ void create_pf_pt_entry(uint64_t *p_add, uint32_t size, uint64_t v_add){
   uint32_t pf_pd_off = get_pd(v_add);
   uint32_t pf_pt_off = get_pt(v_add);
 
+  uint64_t *temp_va = (uint64_t *)0xFFFFFFFF90002000;
+  
   uint64_t *va_pml4 = (uint64_t *)0xFFFFFFFFFFFFF000;
   if((va_pml4[pf_pml4_off] & 0x1) == 0){ //check for present bit 
     uint64_t pf_pdp = (uint64_t)get_free_page();
+    create_page_table_entry((uint64_t *)pf_pdp, 1, (uint64_t) temp_va);
+    clear_page(temp_va);
     va_pml4[pf_pml4_off] = pf_pdp | USERPAG;
   }
 
   uint64_t *va_pdp = (uint64_t *)(0xFFFFFFFFFFE00000 | (uint64_t)pf_pml4_off <<12);
   if((va_pdp[pf_pdp_off] & 0x1) == 0){ 
     uint64_t pf_pd = (uint64_t)get_free_page();
+    create_page_table_entry((uint64_t *)pf_pd, 1, (uint64_t) temp_va);
+    clear_page(temp_va);
     va_pdp[pf_pdp_off] = pf_pd | USERPAG;
   }
 
   uint64_t *va_pd = (uint64_t *)(0xFFFFFFFFC0000000 | (uint64_t)pf_pml4_off <<21 | (uint64_t)pf_pdp_off <<12);
   if((va_pd[pf_pd_off] & 0x1) == 0){ 
     uint64_t pf_pt = (uint64_t)get_free_page();
+    create_page_table_entry((uint64_t *)pf_pt, 1, (uint64_t) temp_va);
+    clear_page(temp_va);
     va_pd[pf_pd_off] = pf_pt | USERPAG;
   }
 
@@ -643,7 +653,7 @@ void create_pf_pt_entry(uint64_t *p_add, uint32_t size, uint64_t v_add){
 
 
 // returns the new cr3 value
-uint64_t makepagetablecopy(uint64_t old_cr3)
+uint64_t makepagetablecopy()
 {
   uint64_t new_cr3;
   uint16_t i, j, k, m;
@@ -651,6 +661,15 @@ uint64_t makepagetablecopy(uint64_t old_cr3)
   uint64_t *newpagepdp = (uint64_t *)0xFFFFFFFF90003000;
   uint64_t *newpagepd = (uint64_t *)0xFFFFFFFF90004000;
   uint64_t *newpagept = (uint64_t *)0xFFFFFFFF90005000;
+  uint64_t *newstack = (uint64_t *)0xFFFFFFFF90006000;
+
+  uint64_t user_stack_va = pcb_struct[current_process].vma_stack.startva;
+  uint64_t user_stack_size = pcb_struct[current_process].vma_stack.startva/4096;
+
+  uint64_t user_stack_pml4 = get_pml4(user_stack_va);
+  uint64_t user_stack_pdp = get_pdp(user_stack_va);
+  uint64_t user_stack_pd = get_pd(user_stack_va);
+  uint64_t user_stack_pt = get_pt(user_stack_va);
 
   // get the page tables
   // pml4
@@ -660,7 +679,7 @@ uint64_t makepagetablecopy(uint64_t old_cr3)
   
   uint64_t *va_cur_pml4 = (uint64_t *)0xFFFFFFFFFFFFF000;
   
-  for(i = 0; i < 511; i++)    // dont overwrite the last entry
+  for(i = 0; i < 510; i++)    // dont overwrite the last entry
   {
     newpagepml4[i] = va_cur_pml4[i];
     if(newpagepml4[i] != 0x2)   // writable is set
@@ -672,7 +691,7 @@ uint64_t makepagetablecopy(uint64_t old_cr3)
 
       newpagepml4[i] = (uint64_t) new_pdp | 0x7;    // set the new entry and user accessible
 
-      for(j = 0; j < 512; j++)
+      for(j = 0; j < 510; j++)
       {
         newpagepdp[j] = va_cur_pdp[j];
         if(newpagepdp[j] != 0x2)
@@ -698,10 +717,25 @@ uint64_t makepagetablecopy(uint64_t old_cr3)
 
               for(m = 0; m < 512; m++)
               {
-                // setting 0X800 for COW
-                // setting 0x5 for USER | READONLY | PRESENT
-                va_cur_pt = (uint64_t*)((( (uint64_t) va_cur_pt & (uint64_t)0xFFFFFFFFFFFFF000) | 0x5) | 0x800); 
-                newpagept[m] = va_cur_pt[m];
+                uint64_t n = 0;
+                //if it is user stack we need to copy the data and create new pages so that it does not fault
+                if(i == user_stack_pml4 && j == user_stack_pdp && k == user_stack_pd && m == user_stack_pt){
+                  for(n = m ; n < m + user_stack_size; n++){
+                    uint64_t *pt_stack = get_free_page();
+                    uint64_t *va_stack = (uint64_t *)((uint64_t)i<<39 | (uint64_t)j<<30 | (uint64_t)k<<21 | (uint64_t)m<<12);
+                    create_page_table_entry(pt_stack, 1, (uint64_t) newstack);
+                    for(int p = 0; p<512;p++){
+                      newstack[p] = va_stack[p];
+                    }
+                    newpagept[n] = (uint64_t)pt_stack | 0x7;
+                  }
+                  m = n;
+                }else{
+                  // setting 0X800 for COW
+                  // setting 0x5 for USER | READONLY | PRESENT
+                  va_cur_pt = (uint64_t*)((( (uint64_t) va_cur_pt & (uint64_t)0xFFFFFFFFFFFFF000) | 0x5) | 0x800); 
+                  newpagept[m] = va_cur_pt[m];
+                }
               }
             }
           }
@@ -709,6 +743,8 @@ uint64_t makepagetablecopy(uint64_t old_cr3)
       }
     }
   }
+
+  newpagepml4[510] = va_cur_pml4[510]; //mapping kernel to higher addresses
 
   return new_cr3;
 }
