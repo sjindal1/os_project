@@ -34,9 +34,7 @@ struct pcb
   uint8_t state; 
   uint8_t exit_status;
   filedes mfdes[16];
-
   uint64_t _start_addr;			// Entry point from the elf header
-
   vma_type vma[32];
   uint8_t numvma;				// number of valid VMA entries
   uint64_t elf_start;

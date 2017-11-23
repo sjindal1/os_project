@@ -185,13 +185,23 @@ void kernel_1_thread(){
 
   *test_pt = 1000;*/
 
+  uint64_t stackadd = (uint64_t)((uint64_t)pcb_struct[current_process]._start_addr & 0xFFFFFFFFFFFFF000) - 6*4096;
+
+  uint64_t *pa_add = get_free_pages(4);
+
+  create_pf_pt_entry(pa_add, 4, stackadd);
+
+  stackadd += 3*4096;
+
+  stackadd += 4088;  
+
   //switching to ring 3
-  uint64_t stack = (uint64_t)kmalloc(4096,NULL);
+  /*uint64_t stack = (uint64_t)kmalloc(4096,NULL);
   kprintf("stack - %x\n", stack);
-  stack+= 4088;
+  stack+= 4088;*/
   save_rsp();
   //switch_to_ring3((uint64_t *)&user_ring3_process, stack);
-  switch_to_ring3((uint64_t *)pcb_struct[current_process]._start_addr, stack);
+  switch_to_ring3((uint64_t *)pcb_struct[current_process]._start_addr, stackadd);
   
   while(1){};
 }

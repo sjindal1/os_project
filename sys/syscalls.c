@@ -7,6 +7,7 @@
 
 uint64_t _syswrite(syscall_params *params);
 uint64_t _sysread(syscall_params *params);
+uint64_t _sysexit(syscall_params *params);
 
 _syscallfunc_ sysfunc[100];
 
@@ -34,6 +35,7 @@ void init_syscalls(){
   uint64_t sfmask = rdmsr(0xC0000084);
   sysfunc[0] = &_sysread;
   sysfunc[1] = &_syswrite;
+  sysfunc[60] = &_sysexit;
   kprintf("efer ->%x, star -> %x, lstar -> %x, cstar -> %x, sfmask -> %x\n", efer, star, lstar, cstar, sfmask);
 }
 
@@ -81,4 +83,11 @@ uint64_t _sysread(syscall_params *params){
 	return 1;*/
 
 	return _vfsread(params->p1, (uint8_t *)params->p2, params->p3);;
+}
+
+//TODO
+//Call yield and clean this process up after the yield.
+uint64_t _sysexit(syscall_params *params){
+	pcb_struct[current_process].exit_status = 1;
+	return 0;
 }
