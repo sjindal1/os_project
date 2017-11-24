@@ -164,7 +164,7 @@ void create_page_table_entry(volatile uint64_t *physical_add, volatile uint64_t 
 
   volatile uint64_t *va_pt = (uint64_t *)(0xFFFFFF8000000000 | (uint64_t)pml4_off_new << 30 | (uint64_t)pdp_off_new << 21 | (uint64_t)pd_off_new << 12);
   invlpg((void*)va_pt);
-  
+
   for(uint32_t j=0;j<no_of_pages;j++){
     if(pt_off_new < 512){
       va_pt[pt_off_new++] = ((uint64_t)physical_add) | KERNPAG;
@@ -689,106 +689,132 @@ void create_pf_pt_entry(uint64_t *p_add, uint32_t size, uint64_t v_add){
 
 }
 
-
-// returns the new cr3 value
-uint64_t makepagetablecopy()
-{
-  uint64_t new_cr3;
-  volatile uint16_t i, j, k, m;
-  volatile uint64_t *newpagepml4 = (uint64_t *)0xFFFFFFFF90002000;
-  invlpg((void *)newpagepml4);
-  volatile uint64_t *newpagepdp = (uint64_t *)0xFFFFFFFF90003000;
-  invlpg((void *)newpagepdp);
-  volatile uint64_t *newpagepd = (uint64_t *)0xFFFFFFFF90004000;
-  invlpg((void *)newpagepd);
-  volatile uint64_t *newpagept = (uint64_t *)0xFFFFFFFF90005000;
-  invlpg((void *)newpagept);
+void copy_pt_entries(volatile uint64_t *newpagept, volatile uint16_t i, volatile uint16_t j, volatile uint16_t k, volatile uint16_t *m){
   volatile uint64_t *newstack = (uint64_t *)0xFFFFFFFF90006000;
   invlpg((void *)newstack);
-
+  
   uint64_t user_stack_va = pcb_struct[current_process].vma_stack.startva;
-  uint64_t user_stack_size = pcb_struct[current_process].vma_stack.startva/4096;
+  uint64_t user_stack_size = pcb_struct[current_process].vma_stack.size/4096;
 
   uint64_t user_stack_pml4 = get_pml4(user_stack_va);
   uint64_t user_stack_pdp = get_pdp(user_stack_va);
   uint64_t user_stack_pd = get_pd(user_stack_va);
   uint64_t user_stack_pt = get_pt(user_stack_va);
 
+  volatile  uint64_t *va_cur_pt = (uint64_t*) (0xFFFFFF8000000000 | (uint64_t)i << 30 | (uint64_t)j << 21 | (uint64_t)k << 12);
+  invlpg((void *)va_cur_pt);
+
+  uint64_t n = 0;
+  //if it is user stack we need to copy the data and create new pages so that it does not fault
+  if(i == user_stack_pml4 && j == user_stack_pdp && k == user_stack_pd && *m == user_stack_pt){
+    for(n = *m ; n < *m + user_stack_size; n++){
+      uint64_t *pt_stack = get_free_page();
+      uint64_t *va_stack = (uint64_t *)((uint64_t)i<<39 | (uint64_t)j<<30 | (uint64_t)k<<21 | (uint64_t)*m<<12);
+      create_page_table_entry(pt_stack, 1, (uint64_t) newstack);
+      for(int p = 0; p<512;p++){
+        newstack[p] = va_stack[p];
+      }
+      newpagept[n] = (uint64_t)pt_stack | 0x7;
+    }
+    *m = n;
+  }else{
+    // setting 0X800 for COW
+    // setting 0x5 for USER | READONLY | PRESENT
+    va_cur_pt = (uint64_t*)((( (uint64_t) va_cur_pt & (uint64_t)0xFFFFFFFFFFFFF000) | 0x5) | 0x800); 
+    newpagept[*m] = va_cur_pt[*m];
+  }
+}
+
+void copy_pd_entries(volatile uint64_t *newpagepd, volatile uint16_t i, volatile uint16_t j, volatile uint16_t k){
+  volatile uint16_t m;
+  volatile uint64_t *newpagept = (uint64_t *)0xFFFFFFFF90005000;
+  invlpg((void *)newpagept);
+  
+  volatile  uint64_t *va_cur_pd = (uint64_t *)(0xFFFFFFFFC0000000 | (uint64_t)i <<21 | (uint64_t)j <<12);
+  invlpg((void *)va_cur_pd);
+
+  newpagepd[k] = va_cur_pd[k];
+  if((newpagepd[k]&0x1) == 1)
+  {
+    uint64_t *new_pt = get_free_page();
+    create_page_table_entry(new_pt, 1, (uint64_t) newpagept);
+
+    newpagepd[k] = (uint64_t) new_pt | 0x7;
+
+    for(m = 0; m < 512; m++)
+    {
+      copy_pt_entries(newpagept, i, j, k, &m);
+    }
+  }
+}
+
+void copy_pdp_entries(volatile uint64_t *newpagepdp, volatile uint16_t i, volatile uint16_t j){
+  volatile uint16_t k;
+  volatile uint64_t *newpagepd = (uint64_t *)0xFFFFFFFF90004000;
+  invlpg((void *)newpagepd);
+
+  volatile  uint64_t *va_cur_pdp = (uint64_t *)(0xFFFFFFFFFFE00000 | (uint64_t)i <<12);
+  invlpg((void *)va_cur_pdp);
+  
+  newpagepdp[j] = va_cur_pdp[j];
+  if((newpagepdp[j]&0x1) == 1)
+  {
+    uint64_t *new_pd = get_free_page();
+    create_page_table_entry(new_pd, 1, (uint64_t) newpagepd);
+
+    newpagepdp[j] = (uint64_t) new_pd | 0x7;    // set the new entry and user accessible
+
+    for(k = 0; k < 512; k++)
+    {
+      copy_pd_entries(newpagepd, i, j, k);
+    }
+  }
+}
+
+void copy_pml4_entries(volatile uint64_t *newpagepml4, volatile uint16_t i){
+  volatile uint16_t j;
+  volatile uint64_t *newpagepdp = (uint64_t *)0xFFFFFFFF90003000;
+  invlpg((void *)newpagepdp);
+
+  volatile  uint64_t *va_cur_pml4 = (uint64_t *)0xFFFFFFFFFFFFF000;
+  invlpg((void *)va_cur_pml4);
+  
+  newpagepml4[i] = va_cur_pml4[i];
+  if((newpagepml4[i]&0x1) == 1)   // entry is present
+  {
+    uint64_t *new_pdp = get_free_page();
+    create_page_table_entry(new_pdp, 1, (uint64_t) newpagepdp);
+
+    newpagepml4[i] = (uint64_t) new_pdp | 0x7;    // set the new entry and user accessible
+
+    for(j = 0; j < 510; j++)
+    {
+      copy_pdp_entries(newpagepdp, i, j);
+    }
+  }
+}
+
+// returns the new cr3 value
+uint64_t makepagetablecopy()
+{
+  uint64_t new_cr3;
+  volatile uint16_t i;
+  volatile uint64_t *newpagepml4 = (uint64_t *)0xFFFFFFFF90002000;
+  invlpg((void *)newpagepml4);
+
+
+  volatile  uint64_t *va_cur_pml4 = (uint64_t *)0xFFFFFFFFFFFFF000;
+  invlpg((void *)va_cur_pml4);
+  
   // get the page tables
   // pml4
   new_cr3 = (uint64_t) get_free_self_ref_user_page();
   // map the page to 0xFFFFFFFF90002000 temporarily to copy
   create_page_table_entry((uint64_t*)new_cr3, 1, (uint64_t) newpagepml4);
   
-  volatile  uint64_t *va_cur_pml4 = (uint64_t *)0xFFFFFFFFFFFFF000;
-  invlpg((void *)va_cur_pml4);
-
   for(i = 0; i < 510; i++)    // dont overwrite the last entry
   {
-    newpagepml4[i] = va_cur_pml4[i];
-    if((newpagepml4[i]&0x1) == 1)   // entry is present
-    {
-      volatile  uint64_t *va_cur_pdp = (uint64_t *)(0xFFFFFFFFFFE00000 | (uint64_t)i <<12);
-      invlpg((void *)va_cur_pdp);
-
-      uint64_t *new_pdp = get_free_page();
-      create_page_table_entry(new_pdp, 1, (uint64_t) newpagepdp);
-
-      newpagepml4[i] = (uint64_t) new_pdp | 0x7;    // set the new entry and user accessible
-
-      for(j = 0; j < 510; j++)
-      {
-        newpagepdp[j] = va_cur_pdp[j];
-        if((newpagepdp[j]&0x1) == 1)
-        {
-          volatile  uint64_t *va_cur_pd = (uint64_t *)(0xFFFFFFFFC0000000 | (uint64_t)i <<21 | (uint64_t)j <<12);
-          invlpg((void *)va_cur_pd);
-
-          uint64_t *new_pd = get_free_page();
-          create_page_table_entry(new_pd, 1, (uint64_t) newpagepd);
-
-          newpagepdp[j] = (uint64_t) new_pd | 0x7;    // set the new entry and user accessible
-
-          for(k = 0; k < 512; k++)
-          {
-            newpagepd[k] = va_cur_pd[k];
-            if((newpagepd[k]&0x1) == 1)
-            {
-              volatile  uint64_t *va_cur_pt = (uint64_t*) (0xFFFFFF8000000000 | (uint64_t)i << 30 | (uint64_t)j << 21 | (uint64_t)k << 12);
-              invlpg((void *)va_cur_pt);
-
-              uint64_t *new_pt = get_free_page();
-              create_page_table_entry(new_pt, 1, (uint64_t) newpagept);
-
-              newpagepd[k] = (uint64_t) new_pt | 0x7;
-
-              for(m = 0; m < 512; m++)
-              {
-                uint64_t n = 0;
-                //if it is user stack we need to copy the data and create new pages so that it does not fault
-                if(i == user_stack_pml4 && j == user_stack_pdp && k == user_stack_pd && m == user_stack_pt){
-                  for(n = m ; n < m + user_stack_size; n++){
-                    uint64_t *pt_stack = get_free_page();
-                    uint64_t *va_stack = (uint64_t *)((uint64_t)i<<39 | (uint64_t)j<<30 | (uint64_t)k<<21 | (uint64_t)m<<12);
-                    create_page_table_entry(pt_stack, 1, (uint64_t) newstack);
-                    for(int p = 0; p<512;p++){
-                      newstack[p] = va_stack[p];
-                    }
-                    newpagept[n] = (uint64_t)pt_stack | 0x7;
-                  }
-                  m = n;
-                }else{
-                  // setting 0X800 for COW
-                  // setting 0x5 for USER | READONLY | PRESENT
-                  va_cur_pt = (uint64_t*)((( (uint64_t) va_cur_pt & (uint64_t)0xFFFFFFFFFFFFF000) | 0x5) | 0x800); 
-                  newpagept[m] = va_cur_pt[m];
-                }
-              }
-            }
-          }
-        }
-      }
-    }
+    copy_pml4_entries(newpagepml4,i);
   }
 
   newpagepml4[510] = va_cur_pml4[510]; //mapping kernel to higher addresses
