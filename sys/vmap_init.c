@@ -7,7 +7,7 @@ uint64_t get_pml4(uint64_t kermem);
 uint64_t get_pdp(uint64_t kermem);
 uint64_t get_pd(uint64_t kermem);
 uint64_t get_pt(uint64_t kermem);
-void clear_page(uint64_t *page);
+void clear_page(volatile uint64_t *page);
 
 uint32_t pml4_off;
 uint32_t pdp_off;
@@ -25,6 +25,17 @@ extern uint64_t *kernel_cr3;
 page_dir kernel_page_info;
 
 uint64_t heap_start = HEAP_START_ADD;
+
+static inline void invlpg(void* m)
+{
+    /* Clobber memory to avoid optimizer re-ordering access before invlpg, which may cause nasty bugs. */
+    __asm__ __volatile__ ( "invlpg (%0)" : : "r"(m) : "memory" );
+}
+
+void invalidate_tlb(){
+  __asm__ __volatile__ ("movq %cr3, %rax\n\t"
+                        "movq %rax, %cr3\n\t");
+}
 
 void create4KbPages(uint32_t *modulep,void *physbase, void *physfree){
   struct smap_t {
@@ -136,38 +147,57 @@ uint64_t* get_free_self_ref_user_page(){
   return t->start;
 }
 
-void create_page_table_entry(uint64_t *physical_add, uint64_t no_of_pages , uint64_t virtual_add){
+void create_page_table_entry(volatile uint64_t *physical_add, volatile uint64_t no_of_pages , volatile uint64_t virtual_add){
 
+  uint32_t pml4_off_new = get_pml4(virtual_add);
+  uint32_t pdp_off_new = get_pdp(virtual_add);
   uint32_t pd_off_new = get_pd(virtual_add);
   uint32_t pt_off_new = get_pt(virtual_add);
   
+  volatile  uint64_t *va_cur_pd = (uint64_t *)(0xFFFFFFFFC0000000 | (uint64_t)pml4_off_new <<21 | (uint64_t)pdp_off_new <<12);
+  invlpg((void*)va_cur_pd);
 
-  if((((uint64_t)kernel_page_info.pd[pd_off_new])>>12) == 0){
-    uint64_t *page = get_free_self_ref_user_page();
-    kernel_page_info.pd[pd_off_new] = (uint64_t)page | KERNPAG;
+  if((va_cur_pd[pd_off_new] & 0x1) == 0){
+    uint64_t *page = get_free_page();
+    va_cur_pd[pd_off_new] = (uint64_t)page | KERNPAG;
   }
 
-  uint64_t *pt_address = (uint64_t *)((virtual_add & 0xFFFFFFFFFFE00000) | (uint64_t)0x1ff<<12 ) ;
+  volatile uint64_t *va_pt = (uint64_t *)(0xFFFFFF8000000000 | (uint64_t)pml4_off_new << 30 | (uint64_t)pdp_off_new << 21 | (uint64_t)pd_off_new << 12);
+  invlpg((void*)va_pt);
+  
+  for(uint32_t j=0;j<no_of_pages;j++){
+    if(pt_off_new < 512){
+      va_pt[pt_off_new++] = ((uint64_t)physical_add) | KERNPAG;
+      physical_add +=512;
+    }else{
+      uint64_t *page = get_free_page();
+      va_cur_pd[++pd_off_new] = ((uint64_t)page) | KERNPAG;
+      pt_off_new = 0;
+      va_pt = (uint64_t *)(0xFFFFFF8000000000 | (uint64_t)pml4_off_new << 30 | (uint64_t)pdp_off_new << 21 | (uint64_t)pd_off_new << 12);      
+      va_pt[pt_off_new++] = ((uint64_t)physical_add) | KERNPAG;
+      physical_add +=512;
+    }
+  }
 
-  uint64_t curkermem = (uint64_t) physical_add;
+ /* volatile uint64_t *pt_address = (uint64_t *)((virtual_add & 0xFFFFFFFFFFE00000) | (uint64_t)0x1ff<<12 ) ;
+
+  volatile uint64_t curkermem = (uint64_t) physical_add;
   for(uint64_t j=0;j<no_of_pages;j++){
     if(pt_off_new < 512)
     {
-      /*if(j < 10)
-        kprintf("j = %d, pt_off = %d, kmst = %x, kmend = %x\n", j, pt_off, curkermem, curkermem + 4096);*/
       pt_address[pt_off_new++] = (curkermem|KERNPAG);
       curkermem += 4096;
     }
     else // pt table is full
     {
-      uint64_t *page = get_free_self_ref_user_page();
+      volatile uint64_t *page = get_free_self_ref_user_page();
       pt_off_new = 0;
       kernel_page_info.pd[++pd_off_new] = (uint64_t)page | KERNPAG;
       kprintf("Kernel PT table is full, creating new\n");
       pt_address[pt_off_new++] = (curkermem|KERNPAG);
       curkermem += 4096;
     } 
-  }
+  }*/
 }
 
 void kfree(uint64_t *v_add){
@@ -431,7 +461,7 @@ uint64_t* kernel_init(){
   return kernel_page_info.pml4;    // to be set to CR3 :)
 }
 
-void clear_page(uint64_t *page){
+void clear_page(volatile uint64_t *page){
   for(int i=0; i < 512; i++){
     page[i] = 0x00000002;
   }
@@ -609,34 +639,40 @@ uint64_t* create_user_page_table(uint64_t va_func,uint64_t pa_func,uint32_t no_o
 }
 
 void create_pf_pt_entry(uint64_t *p_add, uint32_t size, uint64_t v_add){
+  //invalidate_tlb();
   uint32_t pf_pml4_off = get_pml4(v_add);
   uint32_t pf_pdp_off = get_pdp(v_add);
   uint32_t pf_pd_off = get_pd(v_add);
   uint32_t pf_pt_off = get_pt(v_add);
 
-  uint64_t *temp_va = (uint64_t *)0xFFFFFFFF90002000;
-  
+  volatile uint64_t *newpagepdp = (uint64_t *)0xFFFFFFFF90003000;
+  invlpg((void *)newpagepdp);
+  volatile uint64_t *newpagepd = (uint64_t *)0xFFFFFFFF90004000;
+  invlpg((void *)newpagepd);
+  volatile uint64_t *newpagept = (uint64_t *)0xFFFFFFFF90005000;
+  invlpg((void *)newpagept);
+
   uint64_t *va_pml4 = (uint64_t *)0xFFFFFFFFFFFFF000;
   if((va_pml4[pf_pml4_off] & 0x1) == 0){ //check for present bit 
     uint64_t pf_pdp = (uint64_t)get_free_page();
-    create_page_table_entry((uint64_t *)pf_pdp, 1, (uint64_t) temp_va);
-    clear_page(temp_va);
+    create_page_table_entry((uint64_t *)pf_pdp, 1, (uint64_t) newpagepdp);
+    clear_page(newpagepdp);
     va_pml4[pf_pml4_off] = pf_pdp | USERPAG;
   }
 
   uint64_t *va_pdp = (uint64_t *)(0xFFFFFFFFFFE00000 | (uint64_t)pf_pml4_off <<12);
   if((va_pdp[pf_pdp_off] & 0x1) == 0){ 
     uint64_t pf_pd = (uint64_t)get_free_page();
-    create_page_table_entry((uint64_t *)pf_pd, 1, (uint64_t) temp_va);
-    clear_page(temp_va);
+    create_page_table_entry((uint64_t *)pf_pd, 1, (uint64_t) newpagepd);
+    clear_page(newpagepd);
     va_pdp[pf_pdp_off] = pf_pd | USERPAG;
   }
 
   uint64_t *va_pd = (uint64_t *)(0xFFFFFFFFC0000000 | (uint64_t)pf_pml4_off <<21 | (uint64_t)pf_pdp_off <<12);
   if((va_pd[pf_pd_off] & 0x1) == 0){ 
     uint64_t pf_pt = (uint64_t)get_free_page();
-    create_page_table_entry((uint64_t *)pf_pt, 1, (uint64_t) temp_va);
-    clear_page(temp_va);
+    create_page_table_entry((uint64_t *)pf_pt, 1, (uint64_t) newpagept);
+    clear_page(newpagept);
     va_pd[pf_pd_off] = pf_pt | USERPAG;
   }
 
@@ -648,7 +684,7 @@ void create_pf_pt_entry(uint64_t *p_add, uint32_t size, uint64_t v_add){
   for(uint64_t j=0;j<size;j++){
     va_pt[pf_pt_off] = (uint64_t)p_add | USERPAG;
     pf_pt_off++;
-    p_add+=4096;
+    p_add+=512;
   }
 
 }
@@ -659,11 +695,16 @@ uint64_t makepagetablecopy()
 {
   uint64_t new_cr3;
   volatile uint16_t i, j, k, m;
-  uint64_t *newpagepml4 = (uint64_t *)0xFFFFFFFF90002000;
-  uint64_t *newpagepdp = (uint64_t *)0xFFFFFFFF90003000;
-  uint64_t *newpagepd = (uint64_t *)0xFFFFFFFF90004000;
-  uint64_t *newpagept = (uint64_t *)0xFFFFFFFF90005000;
-  uint64_t *newstack = (uint64_t *)0xFFFFFFFF90006000;
+  volatile uint64_t *newpagepml4 = (uint64_t *)0xFFFFFFFF90002000;
+  invlpg((void *)newpagepml4);
+  volatile uint64_t *newpagepdp = (uint64_t *)0xFFFFFFFF90003000;
+  invlpg((void *)newpagepdp);
+  volatile uint64_t *newpagepd = (uint64_t *)0xFFFFFFFF90004000;
+  invlpg((void *)newpagepd);
+  volatile uint64_t *newpagept = (uint64_t *)0xFFFFFFFF90005000;
+  invlpg((void *)newpagept);
+  volatile uint64_t *newstack = (uint64_t *)0xFFFFFFFF90006000;
+  invlpg((void *)newstack);
 
   uint64_t user_stack_va = pcb_struct[current_process].vma_stack.startva;
   uint64_t user_stack_size = pcb_struct[current_process].vma_stack.startva/4096;
@@ -679,14 +720,16 @@ uint64_t makepagetablecopy()
   // map the page to 0xFFFFFFFF90002000 temporarily to copy
   create_page_table_entry((uint64_t*)new_cr3, 1, (uint64_t) newpagepml4);
   
-  volatile uint64_t *va_cur_pml4 = (uint64_t *)0xFFFFFFFFFFFFF000;
-  
+  volatile  uint64_t *va_cur_pml4 = (uint64_t *)0xFFFFFFFFFFFFF000;
+  invlpg((void *)va_cur_pml4);
+
   for(i = 0; i < 510; i++)    // dont overwrite the last entry
   {
     newpagepml4[i] = va_cur_pml4[i];
     if((newpagepml4[i]&0x1) == 1)   // entry is present
     {
-      volatile uint64_t *va_cur_pdp = (uint64_t *)(0xFFFFFFFFFFE00000 | (uint64_t)i <<12);
+      volatile  uint64_t *va_cur_pdp = (uint64_t *)(0xFFFFFFFFFFE00000 | (uint64_t)i <<12);
+      invlpg((void *)va_cur_pdp);
 
       uint64_t *new_pdp = get_free_page();
       create_page_table_entry(new_pdp, 1, (uint64_t) newpagepdp);
@@ -698,7 +741,8 @@ uint64_t makepagetablecopy()
         newpagepdp[j] = va_cur_pdp[j];
         if((newpagepdp[j]&0x1) == 1)
         {
-          volatile uint64_t *va_cur_pd = (uint64_t *)(0xFFFFFFFFC0000000 | (uint64_t)i <<21 | (uint64_t)j <<12);
+          volatile  uint64_t *va_cur_pd = (uint64_t *)(0xFFFFFFFFC0000000 | (uint64_t)i <<21 | (uint64_t)j <<12);
+          invlpg((void *)va_cur_pd);
 
           uint64_t *new_pd = get_free_page();
           create_page_table_entry(new_pd, 1, (uint64_t) newpagepd);
@@ -710,8 +754,9 @@ uint64_t makepagetablecopy()
             newpagepd[k] = va_cur_pd[k];
             if((newpagepd[k]&0x1) == 1)
             {
-              volatile uint64_t *va_cur_pt = (uint64_t*) (0xFFFFFF8000000000 | (uint64_t)i << 30 | (uint64_t)j << 21 | (uint64_t)k << 12);
-              
+              volatile  uint64_t *va_cur_pt = (uint64_t*) (0xFFFFFF8000000000 | (uint64_t)i << 30 | (uint64_t)j << 21 | (uint64_t)k << 12);
+              invlpg((void *)va_cur_pt);
+
               uint64_t *new_pt = get_free_page();
               create_page_table_entry(new_pt, 1, (uint64_t) newpagept);
 

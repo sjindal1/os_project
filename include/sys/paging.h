@@ -29,7 +29,7 @@ uint64_t* create_user_page_table(uint64_t va_func,uint64_t pa_func,uint32_t no_o
 
 typedef struct page_dir page_dir;
 
-void create_page_table_entry(uint64_t *physical_add, uint64_t no_of_pages , uint64_t virtual_add);
+void create_page_table_entry(volatile uint64_t *physical_add,volatile uint64_t no_of_pages ,volatile uint64_t virtual_add);
 
 void create_pf_pt_entry(uint64_t *p_add, uint32_t size, uint64_t v_add);
 
