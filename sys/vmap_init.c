@@ -7,6 +7,7 @@ uint64_t get_pml4(uint64_t kermem);
 uint64_t get_pdp(uint64_t kermem);
 uint64_t get_pd(uint64_t kermem);
 uint64_t get_pt(uint64_t kermem);
+void clear_page(uint64_t *page);
 
 uint32_t pml4_off;
 uint32_t pdp_off;
@@ -130,6 +131,7 @@ uint64_t* get_free_self_ref_user_page(){
   free_page = t->next;
   create_page_table_entry(t->start, 1, 0xFFFFFFFF90001000); //Take care of infinite loop while changing address
   uint64_t *temp = (uint64_t *)0xFFFFFFFF90001000;
+  clear_page(temp);
   temp[511] = (uint64_t)t->start | KERNPAG;
   return t->start;
 }
@@ -656,7 +658,7 @@ void create_pf_pt_entry(uint64_t *p_add, uint32_t size, uint64_t v_add){
 uint64_t makepagetablecopy()
 {
   uint64_t new_cr3;
-  uint16_t i, j, k, m;
+  volatile uint16_t i, j, k, m;
   uint64_t *newpagepml4 = (uint64_t *)0xFFFFFFFF90002000;
   uint64_t *newpagepdp = (uint64_t *)0xFFFFFFFF90003000;
   uint64_t *newpagepd = (uint64_t *)0xFFFFFFFF90004000;
@@ -677,14 +679,14 @@ uint64_t makepagetablecopy()
   // map the page to 0xFFFFFFFF90002000 temporarily to copy
   create_page_table_entry((uint64_t*)new_cr3, 1, (uint64_t) newpagepml4);
   
-  uint64_t *va_cur_pml4 = (uint64_t *)0xFFFFFFFFFFFFF000;
+  volatile uint64_t *va_cur_pml4 = (uint64_t *)0xFFFFFFFFFFFFF000;
   
   for(i = 0; i < 510; i++)    // dont overwrite the last entry
   {
     newpagepml4[i] = va_cur_pml4[i];
-    if(newpagepml4[i] != 0x2)   // writable is set
+    if((newpagepml4[i]&0x1) == 1)   // entry is present
     {
-      uint64_t *va_cur_pdp = (uint64_t *)(0xFFFFFFFFFFE00000 | (uint64_t)i <<12);
+      volatile uint64_t *va_cur_pdp = (uint64_t *)(0xFFFFFFFFFFE00000 | (uint64_t)i <<12);
 
       uint64_t *new_pdp = get_free_page();
       create_page_table_entry(new_pdp, 1, (uint64_t) newpagepdp);
@@ -694,9 +696,9 @@ uint64_t makepagetablecopy()
       for(j = 0; j < 510; j++)
       {
         newpagepdp[j] = va_cur_pdp[j];
-        if(newpagepdp[j] != 0x2)
+        if((newpagepdp[j]&0x1) == 1)
         {
-          uint64_t *va_cur_pd = (uint64_t *)(0xFFFFFFFFC0000000 | (uint64_t)i <<21 | (uint64_t)j <<12);
+          volatile uint64_t *va_cur_pd = (uint64_t *)(0xFFFFFFFFC0000000 | (uint64_t)i <<21 | (uint64_t)j <<12);
 
           uint64_t *new_pd = get_free_page();
           create_page_table_entry(new_pd, 1, (uint64_t) newpagepd);
@@ -706,9 +708,9 @@ uint64_t makepagetablecopy()
           for(k = 0; k < 512; k++)
           {
             newpagepd[k] = va_cur_pd[k];
-            if(newpagepd[k] != 0x2)
+            if((newpagepd[k]&0x1) == 1)
             {
-              uint64_t *va_cur_pt = (uint64_t*) (0xFFFFFF8000000000 | (uint64_t)i << 30 | (uint64_t)j << 21 | (uint64_t)k << 12);
+              volatile uint64_t *va_cur_pt = (uint64_t*) (0xFFFFFF8000000000 | (uint64_t)i << 30 | (uint64_t)j << 21 | (uint64_t)k << 12);
               
               uint64_t *new_pt = get_free_page();
               create_page_table_entry(new_pt, 1, (uint64_t) newpagept);
