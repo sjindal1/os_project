@@ -140,10 +140,11 @@ set_child_stack:
 	andq $0xfff, %rax;
 	orq %rax, %rdi;
 
-	addq $0x8, %rdi; //equivalent return from this function
+	//addq $0x8, %rdi; //equivalent return from this function
 
-	subq $8, %rdi; 
-	add $48, %rdx;
+	//subq $8, %rdi; 
+	//add $43, %rdx;
+	movq (%rsp), %rdx;
 	movq %rdx, (%rdi);
 
 	subq $48, %rdi;
@@ -186,6 +187,7 @@ set_child_stack:
 
 	movq %rdi, 8(%rsi);
 
+	callq yield
 
 
 	ret;

@@ -13,12 +13,10 @@ void user_write(char * b, int len){
 }
 
 int user_fork(){
-  int ret = 0;
-  __asm__ __volatile__ ("movq $57, %%rax\n\t"
+  __asm__ __volatile__ ("movq $57, %rax\n\t"
                         "syscall\n\t"
-                        : "=m" (ret)
-                        );  
-  return ret;
+                        "ret\n\t");  
+  return 0;
 }
 
 int main(int argc, char *argv[], char *envp[]) {

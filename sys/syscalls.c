@@ -11,7 +11,7 @@ uint64_t _sysexit(syscall_params *params);
 uint64_t _sysfork(syscall_params *params);
 
 //void switch_to_child(uint32_t , uint64_t* , pcb*, pcb*);
-void set_child_stack(uint64_t*, pcb*,uint64_t);
+void set_child_stack(uint64_t*, pcb*);
 
 _syscallfunc_ sysfunc[100];
 
@@ -70,23 +70,30 @@ uint64_t kernel_syscall()
  		uint64_t *parent_stack = pcb_struct[current_process].kstack;
 		uint64_t *child_stack = pcb_struct[childproc].kstack;
 
-		for(int i = 0 ; i<512;i++){
+		for(int i = 0 ; i<511;i++){
 			child_stack[i] = parent_stack[i];
 		}
-		uint64_t rip = 0;
-		__asm__ __volatile__("lea (%%rip), %%rax\n\t"
-							"movq %%rax, %0\n\t"
-							:"=m"(rip));
-		set_child_stack(pcb_struct[childproc].kstack, &pcb_struct[childproc],rip);
-	}
-
-	yield();
-
-	if(params->sysnum == 57){
-		uint64_t *process_stack = pcb_struct[current_process].kstack;
-		retval = process_stack[511];
-		save_rsp();
-	}
+		set_child_stack(pcb_struct[childproc].kstack, &pcb_struct[childproc]);
+    
+    /*volatile uint64_t *process_stack = pcb_struct[current_process].kstack;
+    retval = process_stack[511];*/
+    save_rsp();
+    __asm__ __volatile__ ("movq %%rsp, %%rax\n\t"
+                          "andq $0xfffffffffffff000, %%rax\n\t"
+                          "orq $0xff8, %%rax\n\t"
+                          "movq (%%rax), %%rdx\n\t"
+                          "movq %%rdx, %0\n\t"
+                          :"=m"(retval)
+                          :
+                          :"memory");
+    /*volatile uint64_t *p_stack = pcb_struct[current_process].kstack;
+    retval = p_stack[511];*/
+    kprintf("retval %d\n", retval);
+    return retval;
+    //return pcb_struct[current_process].kstack[511];
+	}else{
+    yield();
+  }
 
 	kfree((uint64_t *)params);
 
