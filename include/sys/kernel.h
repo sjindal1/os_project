@@ -49,6 +49,8 @@ extern uint64_t *kernel_cr3;
 
 void yield();
 
+void save_rsp();
+
 void create_kernel_thread(uint64_t* func_ptr);
 
 void create_pcb_stack(uint64_t *user_cr3,uint64_t va_func);

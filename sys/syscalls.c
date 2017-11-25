@@ -10,8 +10,8 @@ uint64_t _sysread(syscall_params *params);
 uint64_t _sysexit(syscall_params *params);
 uint64_t _sysfork(syscall_params *params);
 
-void switch_to_child(uint32_t , uint64_t* , pcb*, pcb*);
-
+//void switch_to_child(uint32_t , uint64_t* , pcb*, pcb*);
+void set_child_stack(uint64_t*, pcb*,uint64_t);
 
 _syscallfunc_ sysfunc[100];
 
@@ -62,6 +62,31 @@ uint64_t kernel_syscall()
 	
 	  //kprintf("syscall_handle 1 sysnum -> %x, p1 - %x, p2- %x, p3- %x, p4 - %x\n",params->sysnum, params->p1, params->p2, params->p3, params->p4);
 	retval = sysfunc[params->sysnum](params);
+
+	if(params->sysnum == 57)
+	{
+		uint32_t childproc = free_pcb - 1;
+		//make a copy of the parent stack
+ 		uint64_t *parent_stack = pcb_struct[current_process].kstack;
+		uint64_t *child_stack = pcb_struct[childproc].kstack;
+
+		for(int i = 0 ; i<512;i++){
+			child_stack[i] = parent_stack[i];
+		}
+		uint64_t rip = 0;
+		__asm__ __volatile__("lea (%%rip), %%rax\n\t"
+							"movq %%rax, %0\n\t"
+							:"=m"(rip));
+		set_child_stack(pcb_struct[childproc].kstack, &pcb_struct[childproc],rip);
+	}
+
+	yield();
+
+	if(params->sysnum == 57){
+		uint64_t *process_stack = pcb_struct[current_process].kstack;
+		retval = process_stack[511];
+		save_rsp();
+	}
 
 	kfree((uint64_t *)params);
 
@@ -128,16 +153,27 @@ void create_pcb_copy(){
   //make a copy of the parent stack
   uint64_t *parent_stack = pcb_struct[current_process].kstack;
   uint64_t *child_stack = pcb_struct[free_pcb].kstack;
+
+  // copy user space stack
+  uint64_t *parent_user_stack = (uint64_t*) ((uint64_t) pcb_struct[current_process].user_rsp & (uint64_t) 0xfffffffffffff000);
+  uint64_t *child_user_stack = (uint64_t*) ((uint64_t) pcb_struct[free_pcb].user_rsp & (uint64_t) 0xfffffffffffff000);
+  
   for(int i = 0 ; i<512;i++){
   	child_stack[i] = parent_stack[i];
+  	child_user_stack[i] = parent_user_stack[i];
   }
 
-  switch_to_child(free_pcb, pcb_struct[free_pcb].kstack, &pcb_struct[current_process], &pcb_struct[free_pcb]);
+  child_stack[511] = 0;
+  parent_stack[511] = free_pcb;
+
+  //switch_to_child(free_pcb, pcb_struct[free_pcb].kstack, &pcb_struct[current_process], &pcb_struct[free_pcb]);
+  //set_child_stack(pcb_struct[free_pcb].kstack, &pcb_struct[free_pcb]);
 }
 
 uint64_t _sysfork(syscall_params *params){
 	create_pcb_copy();
 	free_pcb++;
+	no_of_task++;
 	return free_pcb;
 }
 

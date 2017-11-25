@@ -152,14 +152,13 @@ uint64_t* get_free_self_ref_user_page(){
 }
 
 void kfree(uint64_t *v_add){
-  /*uint64_t pt_off = get_pt((uint64_t)v_add);
+  uint64_t pt_off = get_pt((uint64_t)v_add);
   int64_t sv_add = (int64_t)v_add;
   sv_add = sv_add >> 9;
   uint64_t *pt_va = (uint64_t *)(sv_add & 0xFFFFFFFFFFFFF000);
   uint64_t p_add = pt_va[pt_off];
   //kprintf("v_addr - %x, sv_add - %x, pt-off - %x, p_add - %x, p_add_prev - %x\n",v_add, sv_add, pt_off, p_add, pt_va[pt_off-1]);
   free((uint64_t *)p_add);
-  pt_va[pt_off] = 0x2;*/
   return;
 }
 

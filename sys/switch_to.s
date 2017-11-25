@@ -6,6 +6,7 @@
 .global rdmsr_read
 .global wrmsr_write
 .global switch_to_child
+.global set_child_stack
 
 switch_to:
 	// pushing all general purpose registers
@@ -130,6 +131,65 @@ wrmsr_write:
 	wrmsr;
 	ret;
 
+set_child_stack:
+// new rsp - rdi
+// child pcb - rsi
+// rip - rdx
+
+	movq %rsp, %rax;
+	andq $0xfff, %rax;
+	orq %rax, %rdi;
+
+	addq $0x8, %rdi; //equivalent return from this function
+
+	subq $8, %rdi; 
+	add $48, %rdx;
+	movq %rdx, (%rdi);
+
+	subq $48, %rdi;
+
+	subq $8, %rdi;
+	movq %r8, (%rdi);
+
+	subq $8, %rdi;
+	movq %r9, (%rdi);
+
+	subq $8, %rdi;
+	movq %r10, (%rdi);
+
+	subq $8, %rdi;
+	movq %r11, (%rdi);
+
+	subq $8, %rdi;
+	movq %r12, (%rdi);
+
+	subq $8, %rdi;
+	movq %r13, (%rdi);
+
+	subq $8, %rdi;
+	movq %r14, (%rdi);
+
+	subq $8, %rdi;
+	movq %r15, (%rdi);
+
+	subq $8, %rdi;
+	movq 24(%rsi), %rax;
+	movq %rax, (%rdi);
+
+	subq $8, %rdi;
+	pushfq;
+	popq %rax;
+	movq %rax, (%rdi);
+
+	subq $8, %rdi; //equivalent of switch function
+	movq %rsi, (%rdi);
+
+	movq %rdi, 8(%rsi);
+
+
+
+	ret;
+
 switch_to_child:
 // pid - rdi
 // new rsp - rsi
@@ -137,12 +197,15 @@ switch_to_child:
 // child pcb - rcx
 //	pushq rax;
 
-	mov %esp, %eax;
-	and $0xfff, %eax;
-	or %eax, %esi;
+	movq %rsp, %rax;
+	andq $0xfff, %rax;
+	orq %rax, %rsi;
 
 	//subq $8, %rsp;
 	//subq $8, %rsi;
+
+	movq (%rsp), %rax;		// move the function return address from parent stack to rax
+	movq %rax, (%rsi);		// move from rax to child stack
 
 	movq %rdi, -8(%rsp);
 	movq $0, -8(%rsi);
@@ -154,7 +217,10 @@ switch_to_child:
 
 	movq %rsp, 8(%rdx); 		// save my rsp value in pcb
 	movq 8(%rcx), %rsp; 		// update the rsp value with the next process stack
-	
+
+	movq 24(%rcx), %rax;
+	movq %rax, %cr3;
+
 //	popq %rax;
 	ret;
 
