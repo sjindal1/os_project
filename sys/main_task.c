@@ -47,7 +47,7 @@ void main_task(){
 	return;
 }
 
-void map_user_process_init(uint64_t *func_add, uint32_t no_of_pages){
+/*void map_user_process_init(uint64_t *func_add, uint32_t no_of_pages){
 	uint64_t pa_func = ((uint64_t)func_add - (uint64_t)&kernmem + (uint64_t)&physbase);
 	pa_func = pa_func & (uint64_t)0xFFFFFFFFFFFFF000;
 	uint64_t va_func = 0xFFFFFEFF20000000;
@@ -56,7 +56,7 @@ void map_user_process_init(uint64_t *func_add, uint32_t no_of_pages){
 	va_func = va_func | ((uint64_t)func_add & (uint64_t)0xfff);
   va_func+=4096;
 	create_pcb_stack(user_cr3,va_func);
-}
+}*/
 
 void user_process_1(){
   //int j = 0;
@@ -195,14 +195,16 @@ void kernel_1_thread(){
 
   pcb_struct[current_process].vma_stack.permissions = 0xff;
 
-  create_pf_pt_entry(pa_add, 4, stackadd);
+  for(uint32_t i = 0; i< 4; i++){
+    create_pf_pt_entry(pa_add, stackadd);
+    pa_add+=512;
+    stackadd +=4096;
+  }
 
-  stackadd += 3*4096;
-
-  stackadd += 4088;  
+  stackadd -= 8;  
 
   //switching to ring 3
-  /*uint64_t stack = (uint64_t)kmalloc(4096,NULL);
+  /*uint64_t stack = (uint64_t)kmalloc(4096);
   kprintf("stack - %x\n", stack);
   stack+= 4088;*/
   save_rsp();
@@ -232,7 +234,7 @@ void kernel_2_thread(){
   pcb_struct[free_pcb].cr3 = (uint64_t)kernel_cr3;
   pcb_struct[free_pcb].state = 0;
   pcb_struct[free_pcb].exit_status = -1;
-  pcb_struct[free_pcb].kstack = kmalloc(4096, NULL);
+  pcb_struct[free_pcb].kstack = kmalloc(4096);
   pcb_struct[free_pcb].rsp = (uint64_t)(pcb_struct[free_pcb].kstack) + 0xF80;
    
   //Initialize Thread 1

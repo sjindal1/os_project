@@ -1,7 +1,8 @@
 #ifndef _PAGING_H
 #define _PAGING_H
 
-#define HEAP_START_ADD 0xFFFFFFFF90010000;
+#define HEAP_START_ADD 0xFFFFFFFF90010000
+#define ONEMAPADD 0xFFFFFFFD00000000
 
 extern char kernmem, physbase;
 
@@ -21,7 +22,7 @@ uint64_t* get_free_self__ref_page();
 
 uint64_t* kernel_init();
 
-uint64_t* kmalloc(uint64_t size, uint64_t*);
+uint64_t* kmalloc(uint64_t size);
 
 void kfree(uint64_t*);
 
@@ -29,11 +30,9 @@ uint64_t* create_user_page_table(uint64_t va_func,uint64_t pa_func,uint32_t no_o
 
 typedef struct page_dir page_dir;
 
-void create_page_table_entry(volatile uint64_t *physical_add,volatile uint64_t no_of_pages ,volatile uint64_t virtual_add);
+void create_pf_pt_entry(uint64_t *p_add, uint64_t v_add);
 
-void create_pf_pt_entry(uint64_t *p_add, uint32_t size, uint64_t v_add);
-
-uint64_t makepagetablecopy();
+uint64_t makepagetablecopy(uint64_t);
 
 struct page_dir
 {

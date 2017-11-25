@@ -62,7 +62,7 @@ void create_kernel_thread(uint64_t* func_ptr){
   pcb_struct[free_pcb].cr3 = (uint64_t)kernel_cr3;
   pcb_struct[free_pcb].state = 0;
   pcb_struct[free_pcb].exit_status = -1;
-  pcb_struct[free_pcb].kstack = kmalloc(4096, NULL);
+  pcb_struct[free_pcb].kstack = kmalloc(4096);
   pcb_struct[free_pcb].rsp = (uint64_t)(pcb_struct[free_pcb].kstack) + 0xF80;
   pcb_struct[free_pcb].mfdes[0].type = TERMINAL;
   pcb_struct[free_pcb].mfdes[0].status = 1;
@@ -107,7 +107,7 @@ void create_pcb_stack(uint64_t *user_cr3,uint64_t va_func){
   pcb_struct[free_pcb].cr3 = (uint64_t)user_cr3;
   pcb_struct[free_pcb].state = 0;
   pcb_struct[free_pcb].exit_status = -1;
-  pcb_struct[free_pcb].kstack = kmalloc(4096, NULL);
+  pcb_struct[free_pcb].kstack = kmalloc(4096);
   pcb_struct[free_pcb].rsp = (uint64_t)(pcb_struct[free_pcb].kstack) + 0xF80;
   pcb_struct[free_pcb].mfdes[0].type = TERMINAL;
   pcb_struct[free_pcb].mfdes[0].status = 1;
@@ -152,7 +152,7 @@ void page_fault_handle(){
 	kprintf("cr2 - %x, pf_error_code - %x\n", pf_cr2, pf_error_code);
 	uint64_t *p_add = get_free_page();
 	uint64_t *va_start = (uint64_t *)(pf_cr2 & 0xFFFFFFFFFFFFF000); 
-  create_pf_pt_entry(p_add, 1 , (uint64_t)va_start);
+  create_pf_pt_entry(p_add, (uint64_t)va_start);
   uint64_t *elf_start = (uint64_t *)pcb_struct[current_process].elf_start;
   for(int i=0;i<512;i++){
   	va_start[i] = elf_start[i];

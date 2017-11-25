@@ -48,7 +48,7 @@ void init_syscalls(){
 uint64_t kernel_syscall()
 {
   uint64_t retval = 0;
-	syscall_params *params = (syscall_params *)kmalloc(4096, NULL);
+	syscall_params *params = (syscall_params *)kmalloc(4096);
 
 	__asm__ __volatile__ ("movq %%r15, %0\n\t"
 		                "movq %%r14, %1\n\t"
@@ -99,9 +99,9 @@ uint64_t _sysexit(syscall_params *params){
 
 void create_pcb_copy(){
   pcb_struct[free_pcb].pid = free_pcb;
-  pcb_struct[free_pcb].kstack = kmalloc(4096,NULL);
+  pcb_struct[free_pcb].kstack = kmalloc(4096);
   pcb_struct[free_pcb].rsp = (uint64_t)pcb_struct[free_pcb].kstack + 4088;
-  pcb_struct[free_pcb].cr3 = makepagetablecopy();
+  pcb_struct[free_pcb].cr3 = makepagetablecopy(pcb_struct[current_process].cr3);
   pcb_struct[free_pcb].user_rsp = pcb_struct[current_process].user_rsp;
   pcb_struct[free_pcb].state = pcb_struct[current_process].state;
   pcb_struct[free_pcb].exit_status = pcb_struct[current_process].exit_status;
