@@ -3,12 +3,16 @@
 #include <sys/kernel.h>
 #include <sys/vfs.h>
 #include <sys/paging.h>
+#include <sys/elf64.h>
 #include <sys/syscalls.h>
 
 uint64_t _syswrite(syscall_params *params);
 uint64_t _sysread(syscall_params *params);
 uint64_t _sysexit(syscall_params *params);
 uint64_t _sysfork(syscall_params *params);
+uint64_t _sysexec(syscall_params *params);
+
+void switch_to_ring3(uint64_t *, uint64_t);
 
 //void switch_to_child(uint32_t , uint64_t* , pcb*, pcb*);
 void set_child_stack(uint64_t*, pcb*);
@@ -40,6 +44,7 @@ void init_syscalls(){
   sysfunc[0] = &_sysread;
   sysfunc[1] = &_syswrite;
   sysfunc[57] = &_sysfork;
+  sysfunc[59] = &_sysexec;
   sysfunc[60] = &_sysexit;
   kprintf("efer ->%x, star -> %x, lstar -> %x, cstar -> %x, sfmask -> %x\n", efer, star, lstar, cstar, sfmask);
 }
@@ -182,5 +187,30 @@ uint64_t _sysfork(syscall_params *params){
 	free_pcb++;
 	no_of_task++;
 	return free_pcb;
+}
+
+uint64_t _sysexec(syscall_params *params){
+  /*uint8_t* path = params.p1;
+  uint8_t **argv = params.p2;
+  uint8_t **envp = params.p3;
+
+  char filename[256] = path; // assuming that path is the absolute path.*/
+
+  char filename[] = "bin/ls";
+  uint8_t *fileptr = (uint8_t *)filename;
+
+  int16_t fd = _vfsopen(fileptr);
+
+  clear_load_file(&pcb_struct[current_process], fd);
+
+  uint64_t stackadd = pcb_struct[current_process].user_rsp;
+
+  stackadd = ((stackadd & 0xfffffffffffff000) | 0xff8);
+  save_rsp();
+  //switch_to_ring3((uint64_t *)&user_ring3_process, stack);
+  switch_to_ring3((uint64_t *)pcb_struct[current_process]._start_addr, stackadd);
+  
+
+  return 0;
 }
 

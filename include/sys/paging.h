@@ -34,6 +34,13 @@ void create_pf_pt_entry(uint64_t *p_add, uint64_t v_add);
 
 uint64_t makepagetablecopy(uint64_t);
 
+uint64_t get_va_add(uint64_t p_add);
+
+uint64_t get_pml4(uint64_t kermem);
+uint64_t get_pdp(uint64_t kermem);
+uint64_t get_pd(uint64_t kermem);
+uint64_t get_pt(uint64_t kermem);
+
 struct page_dir
 {
   uint64_t *pml4;

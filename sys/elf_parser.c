@@ -4,6 +4,7 @@
 #include <sys/syscalls.h>
 #include <sys/utils.h>
 #include <sys/elf64.h>
+#include <sys/paging.h>
 #include <sys/vfs.h>
 
 // file should already to opened
@@ -74,6 +75,45 @@ uint32_t loadelffile(pcb *p, int16_t efd)
 
 	// update the PCB
 	p->_start_addr = elfhdr.e_entry;
+
+	return 0;
+}
+
+void clear_page_table_entry(uint64_t va){
+	uint32_t pml4_off = get_pml4(va);
+	uint32_t pdp_off = get_pdp(va);
+  uint32_t pd_off = get_pd(va);
+  uint32_t pt_off = get_pt(va);
+
+  uint64_t *va_pml4 = (uint64_t *)get_va_add(pcb_struct[current_process].cr3);
+  if((va_pml4[pml4_off] & 0x1) == 1){
+  	uint64_t *va_pdp = (uint64_t *)get_va_add((uint64_t)va_pml4[pml4_off] & 0xFFFFFFFFFFFFF000);
+  	if((va_pdp[pdp_off] & 0x1) == 1){
+  		uint64_t *va_pd = (uint64_t *)get_va_add((uint64_t)va_pdp[pdp_off] & 0xFFFFFFFFFFFFF000);
+  		if((va_pd[pd_off] & 0x1) == 1){
+  			uint64_t *va_pt = (uint64_t *)get_va_add((uint64_t)va_pd[pd_off] & 0xFFFFFFFFFFFFF000);
+  			if((va_pt[pt_off] & 0x1) == 1){
+  				va_pt[pt_off] = 0x2;
+  			}
+  		}
+  	}
+  }
+
+}
+uint32_t clear_load_file(pcb *p, int16_t efd){
+
+	for(int i = p->numvma-1; i>=0 ;i--){
+		clear_page_table_entry(p->vma[i].startva);
+
+		p->vma[i].startva = 0;
+		p->vma[i].size = 0;
+		p->vma[i].offset_fs = 0;	
+		p->vma[i].permissions = 0;
+	}
+
+	p->numvma = 0;
+
+	loadelffile(p, efd);
 
 	return 0;
 }

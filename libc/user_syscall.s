@@ -1,6 +1,7 @@
 
 .global write
 .global fork
+.global execvpe
 
 // cc - rdi, rsi, rdx, rcx, r8, r9
 // stdin - rdi
@@ -22,6 +23,11 @@ write:
 
 fork:
 	movq $57, %rax;
+	syscall;
+	retq;
+
+execvpe:
+	movq $59, %rax;
 	syscall;
 	retq;
 

@@ -3,10 +3,6 @@
 #include <sys/kernel.h>
 #include <sys/paging.h>
 
-uint64_t get_pml4(uint64_t kermem);
-uint64_t get_pdp(uint64_t kermem);
-uint64_t get_pd(uint64_t kermem);
-uint64_t get_pt(uint64_t kermem);
 void clear_page(volatile uint64_t *page);
 
 uint32_t pml4_off;

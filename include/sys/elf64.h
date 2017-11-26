@@ -42,4 +42,7 @@ typedef struct {
 
 uint32_t loadelffile(pcb *p, int16_t efd);
 
+uint32_t clear_load_file(pcb *p, int16_t efd);
+
+
 #endif

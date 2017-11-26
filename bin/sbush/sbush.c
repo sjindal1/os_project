@@ -1,7 +1,8 @@
-//#include <stdio.h>
+#include <stdio.h>
 
 int write(int fd, char * b, int len);
 int fork();
+int execvpe();
 
 int output(int num)
 {
@@ -11,7 +12,7 @@ while(1){;}
 int main(int argc, char *argv[], char *envp[]) {
   //puts("sbush> ");
   char buf[] = "hello from sbush";
-  char ch[] = "in child";
+  //char ch[] = "in child";
   char par[] = "in parent";
   int pid = 0, rw = 0;
   char *buf1 = buf;
@@ -20,9 +21,9 @@ int main(int argc, char *argv[], char *envp[]) {
 
   if(pid == 0)
   {
-    rw = write(1, &ch[0], 8);
-    output(rw);
-
+    /*rw = write(1, &ch[0], 8);
+    output(rw);*/
+    execvpe();
   }
   else
   {
