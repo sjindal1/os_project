@@ -1,22 +1,11 @@
 //#include <stdio.h>
 
-void user_write(char * b, int len){
-  __asm__ __volatile__ ("movq $1, %%rax\n\t"
-                        "movq $1, %%rdi\n\t"
-                        "movq %0, %%rsi\n\t"
-                        "movq %1, %%rdx\n\t"
-                        "movq $5, %%r10\n\t"
-                        "syscall\n\t"
-                        :
-                        :"m"(b), "m"(len)
-                        :"rsp","rcx","r11","rdi","rsi","rdx","r10");  
-}
+int write(int fd, char * b, int len);
+int fork();
 
-int user_fork(){
-  __asm__ __volatile__ ("movq $57, %rax\n\t"
-                        "syscall\n\t"
-                        "ret\n\t");  
-  return 0;
+int output(int num)
+{
+while(1){;}
 }
 
 int main(int argc, char *argv[], char *envp[]) {
@@ -24,20 +13,25 @@ int main(int argc, char *argv[], char *envp[]) {
   char buf[] = "hello from sbush";
   char ch[] = "in child";
   char par[] = "in parent";
-  int pid = 0;
+  int pid = 0, rw = 0;
   char *buf1 = buf;
-  user_write(buf1, 16);
-  pid = user_fork();
+  rw = write(1, buf1, 16);
+  pid = fork();
 
   if(pid == 0)
   {
-    user_write(&ch[0], 8);
+    rw = write(1, &ch[0], 8);
+    output(rw);
+
   }
   else
   {
-    user_write(&par[0], 9);
+    rw = write(1, &par[0], 9);
+    output(rw);
   }
 
   while(1){;}
   return 0;
 }
+
+
