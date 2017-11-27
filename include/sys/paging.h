@@ -36,6 +36,8 @@ uint64_t makepagetablecopy(uint64_t);
 
 uint64_t get_va_add(uint64_t p_add);
 
+void invalidate_tlb();
+
 uint64_t get_pml4(uint64_t kermem);
 uint64_t get_pdp(uint64_t kermem);
 uint64_t get_pd(uint64_t kermem);
