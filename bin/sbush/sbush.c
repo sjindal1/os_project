@@ -21,9 +21,9 @@ int main(int argc, char *argv[], char *envp[]) {
 
   if(pid == 0)
   {
-    /*rw = write(1, &ch[0], 8);
-    output(rw);*/
-    execvpe();
+    //rw = write(1, &ch[0], 8);
+    //output(rw);
+   execvpe();
   }
   else
   {

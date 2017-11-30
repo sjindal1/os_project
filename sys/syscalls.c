@@ -210,8 +210,9 @@ uint64_t _sysexec(syscall_params *params){
   uint64_t stackadd = pcb_struct[current_process].user_rsp;
 
   stackadd = ((stackadd & 0xfffffffffffff000) | 0xff8);
-  save_rsp();
+  //save_rsp();
   //switch_to_ring3((uint64_t *)&user_ring3_process, stack);
+  invalidate_tlb();
   switch_to_ring3((uint64_t *)pcb_struct[current_process]._start_addr, stackadd);
   
 
