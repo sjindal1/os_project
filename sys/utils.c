@@ -17,3 +17,15 @@ int strcmp(uint8_t *string1, uint8_t *string2){
   }
   return string1[i]-string2[j];
 }
+
+uint64_t strlen(uint8_t *str)
+{ 
+  uint64_t len = 0, i;
+  
+  for(i = 0; str[i] != '\0'; i++)
+  { 
+    len++;
+  }
+  
+  return len;
+}

@@ -10,6 +10,7 @@ tarfsinfo ftarinfo[256];
 
 
 uint8_t *envp[10]; 
+uint8_t nenvp;
 uint8_t env1_path[] = {"PATH=/bin"};
 uint8_t env2_username[] = {"PWD=/"};
 
@@ -17,6 +18,33 @@ void set_kernel_environ()
 {
   envp[0] = &env1_path[0];
   envp[1] = &env2_username[0];
+
+  nenvp = 2;
+}
+
+void copy_environ(uint64_t user_en_va, uint64_t *user_st_va)
+{
+  uint8_t i = 0, j, len;
+  uint8_t *st_add = (uint8_t*) (user_en_va + 64);
+
+  for(i = 0; i < nenvp; i++)
+  {
+    len = strlen(envp[i]);
+
+    user_st_va[0] = (uint64_t) st_add;
+    for(j = 0; j < len; j++)
+    {
+      st_add[j] = envp[i][j];
+    }
+    st_add[j++] = '\0';
+
+    st_add = st_add + len + 8;
+
+    user_st_va--;
+  }
+
+  user_st_va[0] = 0;
+  return;
 }
 
 uint32_t get_int_size(char *size){
