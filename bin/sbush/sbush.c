@@ -17,6 +17,7 @@ int main(int argc, char *argv[], char *envp[]) {
   int pid = 0, rw = 0;
   char *buf1 = buf;
   rw = write(1, buf1, 16);
+  printf("printf working \n");
   pid = fork();
 
   char *ls_args[] = {"ls", 0};
