@@ -2,7 +2,7 @@
 
 int write(int fd, char * b, int len);
 int fork();
-int execvpe();
+int execvpe(char *file, char *argv[], char **envp);
 
 int output(int num)
 {
@@ -19,11 +19,15 @@ int main(int argc, char *argv[], char *envp[]) {
   rw = write(1, buf1, 16);
   pid = fork();
 
+  char *ls_args[] = {"ls", 0};
+  /*char *arg1[] ;
+  ls_args[0] = 
+*/
   if(pid == 0)
   {
     //rw = write(1, &ch[0], 8);
     //output(rw);
-   execvpe();
+   execvpe(ls_args[0],ls_args,envp);
   }
   else
   {

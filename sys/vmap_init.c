@@ -671,7 +671,7 @@ uint64_t makepagetablecopy(uint64_t current_cr3)
                 if(cur_va_pt[m] != 0x2){
                   if(i == user_stack_pml4 && j == user_stack_pdp && k == user_stack_pd && m == user_stack_pt){
                     int n;
-                    for(n = m ; n < m + user_stack_size; n++){
+                    for(n = m ; n < m + user_stack_size + 1; n++){ // +1 for the env variables.
                       uint64_t pt_stack = (uint64_t)get_free_page();
                       uint64_t *newstack = (uint64_t *)get_va_add(pt_stack);
                       uint64_t *va_stack = (uint64_t *)get_va_add((uint64_t)cur_va_pt[n] & 0xFFFFFFFFFFFFF000);

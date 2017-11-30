@@ -4,6 +4,8 @@
 #include <sys/vfs.h>
 #include <sys/paging.h>
 #include <sys/elf64.h>
+#include <sys/utils.h>
+#include <sys/tarfs.h>
 #include <sys/syscalls.h>
 
 uint64_t _syswrite(syscall_params *params);
@@ -194,14 +196,31 @@ uint64_t _sysfork(syscall_params *params){
 }
 
 uint64_t _sysexec(syscall_params *params){
-  /*uint8_t* path = params.p1;
-  uint8_t **argv = params.p2;
-  uint8_t **envp = params.p3;
+  uint8_t* path = (uint8_t *)params->p1;
+  uint8_t **argv = (uint8_t **)params->p2;
+  uint8_t **envp = (uint8_t **)params->p3;
 
-  char filename[256] = path; // assuming that path is the absolute path.*/
+  uint8_t filename[256]; // assuming that path is the absolute path.
 
-  char filename[] = "bin/ls";
-  uint8_t *fileptr = (uint8_t *)filename;
+  uint8_t *fileptr;
+
+  if(strStartsWith(path, (uint8_t *)"/") == 0){
+    fileptr = path;
+  }else{
+    int i = 0;
+    while(envp[i] != 0){
+      uint8_t *env_var = envp[i];
+      if(strStartsWith(env_var, (uint8_t *)"PATH=") == 0){
+        uint8_t path_parts[3][256];
+        strspt(env_var, path_parts, '=');
+        strConcat(path_parts[1], path, filename);
+        fileptr = (uint8_t *)filename;
+      }
+      i++;
+    } 
+  }
+
+  fileptr++; // to remove the slash at the start
 
   int16_t fd = _vfsopen(fileptr);
 
@@ -210,10 +229,18 @@ uint64_t _sysexec(syscall_params *params){
   uint64_t stackadd = pcb_struct[current_process].user_rsp;
 
   stackadd = ((stackadd & 0xfffffffffffff000) | 0xff8);
+
+  uint64_t func_start_add = (uint64_t)pcb_struct[current_process]._start_addr;
+
+  uint64_t args_block = func_start_add - 2*4096;
+
+  stackadd = copy_environ(args_block, (uint64_t *)stackadd, envp);
+
+  stackadd = copy_argv(args_block + 0x800, (uint64_t *)stackadd, argv);
   //save_rsp();
   //switch_to_ring3((uint64_t *)&user_ring3_process, stack);
   invalidate_tlb();
-  switch_to_ring3((uint64_t *)pcb_struct[current_process]._start_addr, stackadd);
+  switch_to_ring3((uint64_t *)func_start_add, stackadd);
   
 
   return 0;

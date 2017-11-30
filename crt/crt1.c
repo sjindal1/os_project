@@ -6,12 +6,12 @@ void exit(int a){
 												"syscall\n\t");
 }
 
-void _start(void) {
+/*void _start(void) {
   main(0,NULL,NULL);
   exit(0);
-}
+}*/
 
-/*_start
+void _start(void){
   __asm__ (
   "movq (%rsp), %rdi \n\t"
   "movq %rsp,   %r8 \n\t"
@@ -26,4 +26,5 @@ void _start(void) {
   "movq %r8,   %rdx \n\t"
   "call main         \n\t"
   "movq %rax,   %rdi \n\t"
-  "call exit         \n\t");*/
+  "call exit         \n\t");
+}

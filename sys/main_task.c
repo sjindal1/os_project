@@ -187,7 +187,7 @@ void kernel_1_thread(){
 
   uint64_t stackadd = (uint64_t)((uint64_t)pcb_struct[current_process]._start_addr & 0xFFFFFFFFFFFFF000) - 6*4096;
 
-  uint64_t *pa_add = get_free_pages(4);
+  uint64_t *pa_add = get_free_pages(5); // 4 for thr stack and 1 for envp
 
   pcb_struct[current_process].vma_stack.startva = stackadd;
 
@@ -195,13 +195,21 @@ void kernel_1_thread(){
 
   pcb_struct[current_process].vma_stack.permissions = 0xff;
 
-  for(uint32_t i = 0; i< 4; i++){
+  for(uint32_t i = 0; i< 5; i++){
     create_pf_pt_entry(pa_add, stackadd);
     pa_add+=512;
     stackadd +=4096;
   }
 
+  stackadd -= 4096; // remove for envp
+  uint64_t args_block = stackadd; 
+
   stackadd -= 8;  
+
+
+  stackadd = copy_environ(args_block, (uint64_t *)stackadd, envp);
+
+  stackadd = copy_argv(args_block + 0x800, (uint64_t *)stackadd, argvuser);
 
   //switching to ring 3
   /*uint64_t stack = (uint64_t)kmalloc(4096);

@@ -41,6 +41,10 @@ uint64_t _tarfsopen(uint8_t *);
 
 uint64_t _tarfs_read(uint64_t start_add, uint8_t *buf, uint32_t size);
 
-extern uint8_t *envp[10]; 
+extern uint8_t *envp[10], *argvuser[4]; 
+
+uint64_t copy_argv(uint64_t user_arg_va, uint64_t *user_st_va, uint8_t **argv_proc);
+
+uint64_t copy_environ(uint64_t user_en_va, uint64_t *user_st_va, uint8_t ** envp_proc);
 
 #endif

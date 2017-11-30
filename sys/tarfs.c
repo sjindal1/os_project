@@ -10,41 +10,88 @@ tarfsinfo ftarinfo[256];
 
 
 uint8_t *envp[10]; 
-uint8_t nenvp;
-uint8_t env1_path[] = {"PATH=/bin"};
+uint8_t env1_path[] = {"PATH=/bin/"};
 uint8_t env2_username[] = {"PWD=/"};
+
+uint8_t *argvuser[4];
+uint8_t argvuserpar1[] = {"sbush"};
 
 void set_kernel_environ()
 {
   envp[0] = &env1_path[0];
   envp[1] = &env2_username[0];
+  envp[2] = NULL;
 
-  nenvp = 2;
+  argvuser[0] = &argvuserpar1[0];
+  argvuser[1] = NULL;
 }
 
-void copy_environ(uint64_t user_en_va, uint64_t *user_st_va)
+uint64_t copy_argv(uint64_t user_arg_va, uint64_t *user_st_va, uint8_t **argv_proc)
+{
+  uint8_t i = 0, j = 0, len, k;
+  uint8_t *st_add = (uint8_t*) (user_arg_va);
+  uint64_t ret = (uint64_t) user_st_va;
+
+  user_st_va--;
+  user_st_va[0] = 0;
+
+  while(argv_proc[j] != NULL)
+  {
+    j++;
+    user_st_va--;
+  }
+
+  user_st_va--;
+  user_st_va[0] = j;    // number of arguments
+  user_st_va++;
+
+  ret = ret - 16 - j * 8;
+
+  // j is the number of arguments - copy in reverse order
+  while(j != 0)
+  {
+    len = strlen(argv_proc[i]);     // start copy from the 0th element
+
+    user_st_va[0] = (uint64_t) st_add;
+    user_st_va++;
+
+    for(k = 0; k < len; k++)
+    {
+      st_add[k] = argv_proc[i][k];
+    }
+    st_add[k++] = '\0';
+
+    st_add = st_add + len + 8;
+    j--;
+  }
+
+  return ret;
+}
+
+uint64_t copy_environ(uint64_t user_en_va, uint64_t *user_st_va, uint8_t ** envp_proc)
 {
   uint8_t i = 0, j, len;
   uint8_t *st_add = (uint8_t*) (user_en_va + 64);
 
-  for(i = 0; i < nenvp; i++)
-  {
-    len = strlen(envp[i]);
+  user_st_va--;
+  user_st_va[0] = 0;
 
+  while(envp_proc[i] != NULL)
+  {
+    len = strlen(envp_proc[i]);
+
+    user_st_va--;
     user_st_va[0] = (uint64_t) st_add;
     for(j = 0; j < len; j++)
     {
-      st_add[j] = envp[i][j];
+      st_add[j] = envp_proc[i][j];
     }
     st_add[j++] = '\0';
 
     st_add = st_add + len + 8;
-
-    user_st_va--;
+    i++;
   }
-
-  user_st_va[0] = 0;
-  return;
+  return (uint64_t)user_st_va;
 }
 
 uint32_t get_int_size(char *size){
