@@ -2,6 +2,8 @@
 .global write
 .global fork
 .global execvpe
+.global getpid
+.global getppid
 
 // cc - rdi, rsi, rdx, rcx, r8, r9
 // stdin - rdi
@@ -34,5 +36,15 @@ execvpe:
 
 read:
 	movq $0, %rax;
+	syscall;
+	retq;
+
+getpid:
+	movq $39, %rax;
+	syscall;
+	retq;
+
+getppid:
+	movq $110, %rax;
 	syscall;
 	retq;

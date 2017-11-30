@@ -41,4 +41,6 @@ uint64_t _tarfsopen(uint8_t *);
 
 uint64_t _tarfs_read(uint64_t start_add, uint8_t *buf, uint32_t size);
 
+extern uint8_t *envp[10]; 
+
 #endif

@@ -8,6 +8,17 @@ uint16_t tarfsfilecount = 0;
 
 tarfsinfo ftarinfo[256];
 
+
+uint8_t *envp[10]; 
+uint8_t env1_path[] = {"PATH=/bin"};
+uint8_t env2_username[] = {"PWD=/"};
+
+void set_kernel_environ()
+{
+  envp[0] = &env1_path[0];
+  envp[1] = &env2_username[0];
+}
+
 uint32_t get_int_size(char *size){
   uint32_t int_size=0,fac = 1;
   for(int i=10;i>=0;i--){
@@ -73,4 +84,7 @@ void init_tarfs(){
     temp = (posix_header_ustar*) byteptr;
     tarfsfilecount++;
   }
+
+  //set the environment variables
+  set_kernel_environ();
 }

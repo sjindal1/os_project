@@ -11,13 +11,15 @@ uint64_t _sysread(syscall_params *params);
 uint64_t _sysexit(syscall_params *params);
 uint64_t _sysfork(syscall_params *params);
 uint64_t _sysexec(syscall_params *params);
+uint64_t _sysgetpid(syscall_params *params);
+uint64_t _sysgetppid(syscall_params *params);
 
 void switch_to_ring3(uint64_t *, uint64_t);
 
 //void switch_to_child(uint32_t , uint64_t* , pcb*, pcb*);
 void set_child_stack(uint64_t*, pcb*);
 
-_syscallfunc_ sysfunc[100];
+_syscallfunc_ sysfunc[200];
 
 void wrmsr(uint32_t msrid, uint64_t msr_value){
   uint32_t msr_value_lo = (uint32_t) msr_value;
@@ -46,6 +48,8 @@ void init_syscalls(){
   sysfunc[57] = &_sysfork;
   sysfunc[59] = &_sysexec;
   sysfunc[60] = &_sysexit;
+  sysfunc[39] = &_sysgetpid;
+  sysfunc[110] = &_sysgetppid;
   kprintf("efer ->%x, star -> %x, lstar -> %x, cstar -> %x, sfmask -> %x\n", efer, star, lstar, cstar, sfmask);
 }
 
@@ -213,4 +217,15 @@ uint64_t _sysexec(syscall_params *params){
 
   return 0;
 }
+
+uint64_t _sysgetpid(syscall_params *params)
+{
+	return pcb_struct[current_process].pid;
+}
+
+uint64_t _sysgetppid(syscall_params *params)
+{
+	return pcb_struct[current_process].ppid;
+}
+
 

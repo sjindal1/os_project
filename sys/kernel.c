@@ -59,6 +59,7 @@ void create_kernel_thread(uint64_t* func_ptr){
 
   //Kernel Thread PCB
   pcb_struct[free_pcb].pid = free_pcb;
+  pcb_struct[free_pcb].ppid = current_process;
   pcb_struct[free_pcb].cr3 = (uint64_t)kernel_cr3;
   pcb_struct[free_pcb].state = 0;
   pcb_struct[free_pcb].exit_status = -1;
@@ -104,6 +105,7 @@ void create_kernel_thread(uint64_t* func_ptr){
 void create_pcb_stack(uint64_t *user_cr3,uint64_t va_func){
 	//Kernel Thread 1 PCB
   pcb_struct[free_pcb].pid = free_pcb;
+  pcb_struct[free_pcb].ppid = current_process;
   pcb_struct[free_pcb].cr3 = (uint64_t)user_cr3;
   pcb_struct[free_pcb].state = 0;
   pcb_struct[free_pcb].exit_status = -1;

@@ -39,6 +39,7 @@ struct pcb
   vma_type vma_stack;
   uint8_t numvma;				// number of valid VMA entries
   uint64_t elf_start;
+  uint64_t ppid;
 };
 
 extern pcb pcb_struct[];
