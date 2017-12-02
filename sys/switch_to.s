@@ -7,6 +7,7 @@
 .global wrmsr_write
 .global switch_to_child
 .global set_child_stack
+.global save_rsp
 
 switch_to:
 	// pushing all general purpose registers
@@ -43,6 +44,8 @@ switch_to:
     // restore the registers according to the new stack
 	popfq; 						// pop the eflags/rflags
 	//popq %rip; 					// pop the program counter
+
+	call save_rsp;
 
 	popq %rax;
 	movq %rax, %cr3;
