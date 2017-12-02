@@ -35,7 +35,7 @@ int main(int argc, char *argv[], char *envp[]) {
     rw = write(1, &par[0], 9);
     int j =5;
     while( j >=0){
-      printf("parent");
+      printf(" parent ");
       j--;
     }
     output(rw);
