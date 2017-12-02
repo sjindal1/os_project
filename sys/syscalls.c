@@ -198,7 +198,7 @@ uint64_t _sysfork(syscall_params *params){
 uint64_t _sysexec(syscall_params *params){
   uint8_t* path = (uint8_t *)params->p1;
   uint8_t **argv = (uint8_t **)params->p2;
-  uint8_t **envp = (uint8_t **)params->p3;
+  uint8_t **exec_envp = (uint8_t **)params->p3;
 
   uint8_t filename[256]; // assuming that path is the absolute path.
 
@@ -208,8 +208,8 @@ uint64_t _sysexec(syscall_params *params){
     fileptr = path;
   }else{
     int i = 0;
-    while(envp[i] != 0){
-      uint8_t *env_var = envp[i];
+    while(exec_envp[i] != 0){
+      uint8_t *env_var = exec_envp[i];
       if(strStartsWith(env_var, (uint8_t *)"PATH=") == 0){
         uint8_t path_parts[3][256];
         strspt(env_var, path_parts, '=');
@@ -224,6 +224,38 @@ uint64_t _sysexec(syscall_params *params){
 
   int16_t fd = _vfsopen(fileptr);
 
+  uint8_t *envp_ker[50]; 
+
+  int i=0;
+  while(exec_envp[i] != 0){
+    envp_ker[i] = (uint8_t *)kmalloc(4096);
+    int j = 0;
+    while(exec_envp[i][j] != '\0'){
+      envp_ker[i][j] = exec_envp[i][j];
+      j++;
+    }
+    envp_ker[i][j] = '\0';
+    i++;
+  }
+  envp_ker[i] = 0;
+  i--;
+
+  uint8_t *arg_ker[10]; 
+
+  int arg_i=0;
+  while(argv[arg_i] != 0){
+    arg_ker[arg_i] = (uint8_t *)kmalloc(4096);
+    int j = 0;
+    while(argv[arg_i][j] != '\0'){
+      arg_ker[arg_i][j] = argv[arg_i][j];
+      j++;
+    }
+    arg_ker[arg_i][j] = '\0';
+    arg_i++;
+  }
+  arg_ker[arg_i] = 0;
+  arg_i--;
+
   clear_load_file(&pcb_struct[current_process], fd);
 
   uint64_t stackadd = pcb_struct[current_process].user_rsp;
@@ -232,11 +264,18 @@ uint64_t _sysexec(syscall_params *params){
 
   uint64_t func_start_add = (uint64_t)pcb_struct[current_process]._start_addr;
 
-  uint64_t args_block = func_start_add - 2*4096;
+  uint64_t args_block = (func_start_add  & 0xfffffffffffff000) - 2*4096;
 
-  stackadd = copy_environ(args_block, (uint64_t *)stackadd, envp);
+  stackadd = copy_environ(args_block, (uint64_t *)stackadd, envp_ker);
 
-  stackadd = copy_argv(args_block + 0x800, (uint64_t *)stackadd, argv);
+  stackadd = copy_argv(args_block + 0x800, (uint64_t *)stackadd, arg_ker);
+
+  for( ; i >=0;i--){
+    kfree((uint64_t *)envp_ker[i]);
+  }
+  for( ; arg_i >=0;arg_i--){
+    kfree((uint64_t *)arg_ker[arg_i]);
+  }
   //save_rsp();
   //switch_to_ring3((uint64_t *)&user_ring3_process, stack);
   invalidate_tlb();

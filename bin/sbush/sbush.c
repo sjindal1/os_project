@@ -4,9 +4,9 @@ int write(int fd, char * b, int len);
 int fork();
 int execvpe(char *file, char *argv[], char **envp);
 
-int output(int num)
+void output(int num)
 {
-while(1){;}
+;
 }
 
 int main(int argc, char *argv[], char *envp[]) {
@@ -33,6 +33,11 @@ int main(int argc, char *argv[], char *envp[]) {
   else
   {
     rw = write(1, &par[0], 9);
+    int j =5;
+    while( j >=0){
+      printf("parent");
+      j--;
+    }
     output(rw);
   }
 
