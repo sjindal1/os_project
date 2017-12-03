@@ -702,16 +702,13 @@ uint64_t makepagetablecopy(uint64_t current_cr3)
                   }else{
                     // setting 0X800 for COW
                     // setting 0x5 for USER | READONLY | PRESENT
-                    uint64_t *pt_table_val = (uint64_t *)get_va_add((uint64_t)cur_va_pt[m] & 0xFFFFFFFFFFFFF000); 
-                    if((uint64_t)pt_table_val[m] != 0x805)
-                    {
-                      new_pt_page[m] = pt_table_val[m];
-                      new_pt_page[m] = new_pt_page[m] & 0xFFFFFFFFFFFFF000;
-                      new_pt_page[m] = new_pt_page[m] | 0x5 | 0x800;
-                      pt_table_val[m] = pt_table_val[m] & 0xFFFFFFFFFFFFF000;
-                      pt_table_val[m] = pt_table_val[m] | 0x5 | 0x800;
-                      page_inc_ref_count(new_pt_page[m] & 0xFFFFFFFFFFFFF000);
-                    }
+                    uint64_t *pt_table_val = (uint64_t *)get_va_add((uint64_t)cur_va_pd[k] & 0xFFFFFFFFFFFFF000); 
+                    new_pt_page[m] = pt_table_val[m];
+                    new_pt_page[m] = new_pt_page[m] & 0xFFFFFFFFFFFFF000;
+                    new_pt_page[m] = new_pt_page[m] | 0x5 | 0x800;
+                    pt_table_val[m] = pt_table_val[m] & 0xFFFFFFFFFFFFF000;
+                    pt_table_val[m] = pt_table_val[m] | 0x5 | 0x800;
+                    page_inc_ref_count(new_pt_page[m] & 0xFFFFFFFFFFFFF000);
                   }
                 }
               }

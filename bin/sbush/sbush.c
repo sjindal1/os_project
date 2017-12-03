@@ -34,20 +34,26 @@ int main(int argc, char *argv[], char *envp[]) {
   {
     //rw = write(1, &ch[0], 8);
     //output(rw);
-   //execvpe(ls_args[0],ls_args,envp);
+    //execvpe(ls_args[0],ls_args,envp);
     //while(1) ;
 
     int child_pid = 0;
 
     child_pid = fork();
 
-    /*if(pid == 0)
+    if(child_pid == 0)
     {
-      while(1);
+      while(1){
+        printf("grandchild %d\n", child_pid);
+      }
     }
-    else*/
+    else
     {
-      printf("killing the new parent %d\n", child_pid);
+      int i = 0;
+      while(i<5){
+        printf("father %d\n", child_pid);
+        i++;
+      }
       exit(1);
     }
   }
@@ -81,7 +87,10 @@ int main(int argc, char *argv[], char *envp[]) {
     printf("second time\n");
   }
 
-  while(1){;}
+  while(1){
+    //printf("grandparent\n");
+    ;
+  }
   return 0;
 }
 
