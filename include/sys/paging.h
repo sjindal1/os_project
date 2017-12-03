@@ -55,6 +55,7 @@ struct page_frame_t{
   uint64_t* start;
   page_frame_t *next,*prev;
   uint64_t info;
+  uint32_t ref_count;
 }__attribute__((packed));
 
 #define _PB 		0x1

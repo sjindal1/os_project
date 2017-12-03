@@ -67,6 +67,7 @@ void create4KbPages(uint32_t *modulep,void *physbase, void *physfree){
     page_frame_t *t = head + page_count;
     t->start = (uint64_t*) mem_start;
     t->info = (uint64_t) 0;
+    t->ref_count = 0;
     page_count++;
     if(mem_start < (uint64_t)physfree){
       pages_till_physfree++;
@@ -170,6 +171,7 @@ uint64_t* get_free_page(){
   page_frame_t *t = free_page;
   t->info = 1 | (uint64_t)1 << 32;
   free_page = t->next;
+  t->ref_count = 1;
   return t->start;
 }
 
@@ -221,6 +223,13 @@ uint64_t* get_free_pages(uint32_t no_of_pages){
 void free(uint64_t* address){
   uint64_t page_index = (uint64_t)address/4096;
   page_frame_t *t_start = head + page_index;
+  
+  if(t_start->ref_count > 1)        // reduce the ref count and return if > 1
+  {
+    t_start->ref_count = t_start->ref_count - 1;
+    return;
+  }
+
   int no_of_pages = t_start->info >> 32;
   page_frame_t *t_end = head + (page_index + no_of_pages -1);
   
@@ -618,6 +627,14 @@ void create_pf_pt_entry(uint64_t *p_add, uint64_t v_add){
   }
 }
 
+void page_inc_ref_count(uint64_t pa_add)
+{
+  uint64_t page_index = (uint64_t)pa_add/4096;
+  page_frame_t *t_start = head + page_index;
+  
+  t_start->ref_count = t_start->ref_count + 1;
+}
+
 // returns the new cr3 value
 uint64_t makepagetablecopy(uint64_t current_cr3)
 {
@@ -686,11 +703,15 @@ uint64_t makepagetablecopy(uint64_t current_cr3)
                     // setting 0X800 for COW
                     // setting 0x5 for USER | READONLY | PRESENT
                     uint64_t *pt_table_val = (uint64_t *)get_va_add((uint64_t)cur_va_pt[m] & 0xFFFFFFFFFFFFF000); 
-                    new_pt_page[m] = pt_table_val[m];
-                    new_pt_page[m] = new_pt_page[m] & 0xFFFFFFFFFFFFF000;
-                    new_pt_page[m] = new_pt_page[m] | 0x5 | 0x800;
-                    pt_table_val[m] = pt_table_val[m] & 0xFFFFFFFFFFFFF000;
-                    pt_table_val[m] = pt_table_val[m] | 0x5 | 0x800;
+                    if((uint64_t)pt_table_val[m] != 0x805)
+                    {
+                      new_pt_page[m] = pt_table_val[m];
+                      new_pt_page[m] = new_pt_page[m] & 0xFFFFFFFFFFFFF000;
+                      new_pt_page[m] = new_pt_page[m] | 0x5 | 0x800;
+                      pt_table_val[m] = pt_table_val[m] & 0xFFFFFFFFFFFFF000;
+                      pt_table_val[m] = pt_table_val[m] | 0x5 | 0x800;
+                      page_inc_ref_count(new_pt_page[m] & 0xFFFFFFFFFFFFF000);
+                    }
                   }
                 }
               }

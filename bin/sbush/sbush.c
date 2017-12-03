@@ -1,11 +1,20 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 void output(int num)
 {
 ;
 }
 
+/*void exit(int a){
+  __asm__ __volatile__ ("movq $60, %%rax\n\t"
+                        "movq %0, %%rdi\n\t"
+                        "syscall\n\t"
+                        :
+                        :"m"(a));
+}
+*/
 int main(int argc, char *argv[], char *envp[]) {
   //puts("sbush> ");
   char buf[] = "hello from sbush";
@@ -25,7 +34,22 @@ int main(int argc, char *argv[], char *envp[]) {
   {
     //rw = write(1, &ch[0], 8);
     //output(rw);
-   execvpe(ls_args[0],ls_args,envp);
+   //execvpe(ls_args[0],ls_args,envp);
+    //while(1) ;
+
+    int child_pid = 0;
+
+    child_pid = fork();
+
+    /*if(pid == 0)
+    {
+      while(1);
+    }
+    else*/
+    {
+      printf("killing the new parent %d\n", child_pid);
+      exit(1);
+    }
   }
   else
   {
