@@ -30,7 +30,7 @@ struct pcb
   uint64_t user_rsp;
   uint64_t cr3;
   uint64_t *kstack;
-  //enum { RUNNING, SLEEPING, ZOMBIE } state;
+  //enum { EXIT - -1, RUNNING - 0, SLEEPING - 1, WAITING -2, ZOMBIE -3 } state;
   int8_t state; 
   uint8_t exit_status;
   filedes mfdes[16];
@@ -40,6 +40,9 @@ struct pcb
   uint8_t numvma;				// number of valid VMA entries
   uint64_t elf_start;
   uint64_t ppid;
+  uint8_t my_child[1024];
+  uint8_t wait_child[1024];
+  uint8_t wait_for_any_proc;
 };
 
 extern pcb pcb_struct[];

@@ -1,8 +1,5 @@
 #include <stdio.h>
-
-int write(int fd, char * b, int len);
-int fork();
-int execvpe(char *file, char *argv[], char **envp);
+#include <unistd.h>
 
 void output(int num)
 {
@@ -33,6 +30,9 @@ int main(int argc, char *argv[], char *envp[]) {
   else
   {
     rw = write(1, &par[0], 9);
+
+    waitpid(pid, NULL);
+
     int j =5;
     while( j >=0){
       printf(" parent ");

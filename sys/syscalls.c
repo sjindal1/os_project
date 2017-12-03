@@ -15,6 +15,7 @@ uint64_t _sysfork(syscall_params *params);
 uint64_t _sysexec(syscall_params *params);
 uint64_t _sysgetpid(syscall_params *params);
 uint64_t _sysgetppid(syscall_params *params);
+uint64_t _syswaitpid(syscall_params *params);
 
 void switch_to_ring3(uint64_t *, uint64_t);
 
@@ -50,6 +51,7 @@ void init_syscalls(){
   sysfunc[57] = &_sysfork;
   sysfunc[59] = &_sysexec;
   sysfunc[60] = &_sysexit;
+  sysfunc[61] = &_syswaitpid;
   sysfunc[39] = &_sysgetpid;
   sysfunc[110] = &_sysgetppid;
   kprintf("efer ->%x, star -> %x, lstar -> %x, cstar -> %x, sfmask -> %x\n", efer, star, lstar, cstar, sfmask);
@@ -153,6 +155,7 @@ void create_pcb_copy(){
   pcb_struct[free_pcb]._start_addr = pcb_struct[current_process]._start_addr;
   pcb_struct[free_pcb].numvma = pcb_struct[current_process].numvma;
   pcb_struct[free_pcb].elf_start = pcb_struct[current_process].elf_start;
+  pcb_struct[free_pcb].ppid = current_process;
 
   for(int i=0 ; i<16;i++){
   	pcb_struct[free_pcb].mfdes[i].type = pcb_struct[current_process].mfdes[i].type;
@@ -190,8 +193,24 @@ void create_pcb_copy(){
   //set_child_stack(pcb_struct[free_pcb].kstack, &pcb_struct[free_pcb]);
 }
 
+uint64_t _syswaitpid(syscall_params *params){
+  int64_t pid = (int64_t)params->p1;
+  if(pid == -1){
+    pcb_struct[current_process].wait_for_any_proc = 1;
+    pcb_struct[current_process].state = 2;
+  }else if(pid >= 0){    
+    if(pcb_struct[current_process].my_child[pid] == 0){
+      return 0;
+    }
+    pcb_struct[current_process].wait_child[pid] = 1;
+    pcb_struct[current_process].state = 2;
+  }
+  return 0;
+}
+
 uint64_t _sysfork(syscall_params *params){
 	create_pcb_copy();
+  pcb_struct[current_process].my_child[free_pcb] = 1;
 	free_pcb++;
 	no_of_task++;
 	return free_pcb;

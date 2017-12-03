@@ -47,6 +47,25 @@ void clean_up(volatile pcb *last){
   //free kernel stack
   kfree(last->kstack);
 
+  pcb *parent = &pcb_struct[last->ppid];
+
+  if(parent->wait_for_any_proc == 1){
+    parent->wait_for_any_proc = 0;
+    parent->state = 0;
+  }else if(parent->wait_child[last->pid] == 1){
+    parent->wait_child[last->pid] = 0;
+    int flag = 0;
+    for(int i = 0; i<1024; i++){
+      if(parent->wait_child[i] == 1){
+        flag = 1;
+        break;
+      }
+    }
+    if(flag == 0){
+      parent->state = 0;
+    }
+  }
+
   no_of_task--;
 }
 

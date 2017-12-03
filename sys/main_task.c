@@ -40,8 +40,8 @@ void main_task(){
   no_of_task++;*/
 
   clear_pcb(); //set all processes state as -1
-  create_kernel_thread((uint64_t *)&kernel_1_thread);
   create_kernel_thread((uint64_t *)&kernel_2_thread);
+  create_kernel_thread((uint64_t *)&kernel_1_thread);
 
   //int j=0;
 	//while(j<2){

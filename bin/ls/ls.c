@@ -11,6 +11,9 @@ int main(int argc, char *argv[], char *envp[]) {
 
   printf("envp 0 - %s", envp[0]);
   printf("envp 1 - %s", envp[1]);
+  for(int i =0 ;i<3;i++){
+  	printf("in child");
+  }
   return 0;
 }
 

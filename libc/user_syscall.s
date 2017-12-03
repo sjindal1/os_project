@@ -4,6 +4,7 @@
 .global execvpe
 .global getpid
 .global getppid
+.global waitpid
 
 // cc - rdi, rsi, rdx, rcx, r8, r9
 // stdin - rdi
@@ -46,5 +47,10 @@ getpid:
 
 getppid:
 	movq $110, %rax;
+	syscall;
+	retq;
+
+waitpid:
+	movq $61, %rax
 	syscall;
 	retq;
