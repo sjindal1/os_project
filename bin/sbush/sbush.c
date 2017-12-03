@@ -41,6 +41,22 @@ int main(int argc, char *argv[], char *envp[]) {
     output(rw);
   }
 
+  pid = fork();
+
+  if(pid == 0)
+  {
+    //rw = write(1, &ch[0], 8);
+    //output(rw);
+   execvpe(ls_args[0],ls_args,envp);
+  }
+  else
+  {
+    rw = write(1, &par[0], 9);
+
+    waitpid(pid, NULL);
+    printf("second time\n");
+  }
+
   while(1){;}
   return 0;
 }

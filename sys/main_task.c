@@ -146,7 +146,11 @@ void user_ring3_process() {
 void save_rsp(){
   uint64_t rsp;
   __asm__ __volatile__ ("movq %%rsp, %0" : "=m"(rsp) : : );
+  rsp = rsp & 0xFFFFFFFFFFFFF000;
+  rsp = rsp + 0xff8;
   set_tss_rsp((void *)rsp);
+  /*uint64_t *rsp = pcb_struct[current_process].kstack;
+  set_tss_rsp((void *)rsp);*/
   uint64_t curr_proc_pcb = (uint64_t)&pcb_struct[current_process];
   wrmsr(0xC0000102, curr_proc_pcb);  
 }

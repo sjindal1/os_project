@@ -98,6 +98,9 @@ void yield(){
   if(last->state == 3){
     clean_up(last);
   }
+  if(current_process != 0){
+    save_rsp();
+  }
 }
 
 uint64_t get_rflags_asm()

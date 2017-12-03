@@ -48,7 +48,7 @@ switch_to:
 	popfq; 						// pop the eflags/rflags
 	//popq %rip; 					// pop the program counter
 
-	call save_rsp;
+	//call save_rsp;
 
 	popq %rax;
 	movq %rax, %cr3;

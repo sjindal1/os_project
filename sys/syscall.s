@@ -6,7 +6,9 @@
 syscall_handle:
 	swapgs;
 	movq %rsp, %gs:16;
-	movq %gs:8, %rsp;
+	//movq %gs:8, %rsp;
+	movq %gs:32, %rsp;
+	addq $0xff8, %rsp;
 	pushq %gs:16;
 	swapgs;
 //	pushq %rax;
