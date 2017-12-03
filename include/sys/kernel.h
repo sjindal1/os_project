@@ -31,7 +31,7 @@ struct pcb
   uint64_t cr3;
   uint64_t *kstack;
   //enum { RUNNING, SLEEPING, ZOMBIE } state;
-  uint8_t state; 
+  int8_t state; 
   uint8_t exit_status;
   filedes mfdes[16];
   uint64_t _start_addr;			// Entry point from the elf header

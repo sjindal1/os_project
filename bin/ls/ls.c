@@ -11,8 +11,6 @@ int main(int argc, char *argv[], char *envp[]) {
 
   printf("envp 0 - %s", envp[0]);
   printf("envp 1 - %s", envp[1]);
-
-  while(1){;}
   return 0;
 }
 

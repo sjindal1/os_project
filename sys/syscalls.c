@@ -19,7 +19,7 @@ uint64_t _sysgetppid(syscall_params *params);
 void switch_to_ring3(uint64_t *, uint64_t);
 
 //void switch_to_child(uint32_t , uint64_t* , pcb*, pcb*);
-void set_child_stack(uint64_t*, pcb*);
+void set_child_stack(uint64_t*, pcb*, uint64_t);
 
 _syscallfunc_ sysfunc[200];
 
@@ -55,28 +55,29 @@ void init_syscalls(){
   kprintf("efer ->%x, star -> %x, lstar -> %x, cstar -> %x, sfmask -> %x\n", efer, star, lstar, cstar, sfmask);
 }
 
+uint64_t last = 0;
 
 uint64_t kernel_syscall()
 {
   uint64_t retval = 0;
-	syscall_params *params = (syscall_params *)kmalloc(4096);
+  syscall_params *params = (syscall_params *)kmalloc(4096);
 
-	__asm__ __volatile__ ("movq %%r15, %0\n\t"
-		                "movq %%r14, %1\n\t"
-		                "movq %%r13, %2\n\t"
-		                "movq %%r12, %3\n\t"
-		                "movq %%r10, %4\n\t"
-		                :"=m"(params->sysnum), "=m"(params->p1),"=m"(params->p2), 
-		                "=m"(params->p3), "=m"(params->p4) 
-		                :
-		                :"memory");
-	
-	  //kprintf("syscall_handle 1 sysnum -> %x, p1 - %x, p2- %x, p3- %x, p4 - %x\n",params->sysnum, params->p1, params->p2, params->p3, params->p4);
-	retval = sysfunc[params->sysnum](params);
+  __asm__ __volatile__ ("movq %%r15, %0\n\t"
+                    "movq %%r14, %1\n\t"
+                    "movq %%r13, %2\n\t"
+                    "movq %%r12, %3\n\t"
+                    "movq %%r10, %4\n\t"
+                    :"=m"(params->sysnum), "=m"(params->p1),"=m"(params->p2), 
+                    "=m"(params->p3), "=m"(params->p4) 
+                    :
+                    :"memory");
+  
+    //kprintf("syscall_handle 1 sysnum -> %x, p1 - %x, p2- %x, p3- %x, p4 - %x\n",params->sysnum, params->p1, params->p2, params->p3, params->p4);
+  retval = sysfunc[params->sysnum](params);
 
-	if(params->sysnum == 57)
-	{
-		uint32_t childproc = free_pcb - 1;
+  if(params->sysnum == 57)
+  {
+    uint32_t childproc = free_pcb - 1;
 		//make a copy of the parent stack
  		uint64_t *parent_stack = pcb_struct[current_process].kstack;
 		uint64_t *child_stack = pcb_struct[childproc].kstack;
@@ -84,7 +85,7 @@ uint64_t kernel_syscall()
 		for(int i = 0 ; i<511;i++){
 			child_stack[i] = parent_stack[i];
 		}
-		set_child_stack(pcb_struct[childproc].kstack, &pcb_struct[childproc]);
+		set_child_stack(pcb_struct[childproc].kstack, &pcb_struct[childproc], (uint64_t)&last);
     
     /*volatile uint64_t *process_stack = pcb_struct[current_process].kstack;
     retval = process_stack[511];*/
@@ -136,7 +137,8 @@ uint64_t _sysread(syscall_params *params){
 //TODO
 //Call yield and clean this process up after the yield.
 uint64_t _sysexit(syscall_params *params){
-	pcb_struct[current_process].exit_status = 1;
+	pcb_struct[current_process].exit_status = params->p1;
+  pcb_struct[current_process].state = 3;
 	return 0;
 }
 

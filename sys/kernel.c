@@ -4,26 +4,63 @@
 #include <sys/paging.h>
 #include <sys/kernel.h>
 
-void switch_to(pcb* , pcb*);
+void switch_to(pcb* , pcb*, volatile pcb**);
 
 pcb pcb_struct[1024];
-uint64_t thread_st[512];
 int free_pcb=0;
 int no_of_task=0;
 int current_process=0;
 
 extern uint64_t pf_error_code, pf_cr2;
 
+void clean_up(volatile pcb *last){
+  uint64_t *proc_pml4 = (uint64_t *)get_va_add(last->cr3);
+  for(int i=0;i<500;i++){
+    
+    if((proc_pml4[i] & 0x1) == 1){
+      uint64_t *proc_pdp = (uint64_t *)get_va_add((uint64_t)proc_pml4[i] & 0xFFFFFFFFFFFFF000);
+      
+      for(int j=0; j<512 ; j++){
+        if((proc_pdp[j] & 0x1) == 1){
+
+          uint64_t *proc_pd = (uint64_t *)get_va_add((uint64_t)proc_pdp[j] & 0xFFFFFFFFFFFFF000);
+          for(int k=0; k<512 ; k++){
+            if((proc_pd[k] & 0x1) == 1){
+
+              uint64_t *proc_pt = (uint64_t *)get_va_add((uint64_t)proc_pd[k] & 0xFFFFFFFFFFFFF000);
+              for(int m=0; m<512 ; m++){
+                if((proc_pt[m] & 0x1) == 1){
+                  free((uint64_t *)proc_pt[m]);
+                }
+              }
+              free((uint64_t *)proc_pd[k]);
+            }
+          }
+          free((uint64_t *)proc_pdp[j]);
+        }
+      }
+      free((uint64_t *)proc_pml4[i]);
+    }
+  }
+  free((uint64_t *)last->cr3);
+
+  //free kernel stack
+  kfree(last->kstack);
+
+  no_of_task--;
+}
+
 void yield(){
   //round robin scheduler
   pcb *me = &pcb_struct[current_process],*next = NULL;
+  volatile pcb *last = NULL;
   if(no_of_task == 1){
   	return;
   }
-  else if(current_process+1 == no_of_task){
+  /*else if(current_process+1 == no_of_task){
     next = &pcb_struct[0];
     current_process = 0;
-  }else{
+  }*/else{
   	int i;
     for(i=current_process+1; i<1024; i++){
       if(pcb_struct[i].state == 0){
@@ -36,9 +73,12 @@ void yield(){
       next = &pcb_struct[0];
       current_process = 0;
     }
+  }  
+  switch_to(me, next, &last);
+  kprintf("last process pid %d\n", last->pid);
+  if(last->state == 3){
+    clean_up(last);
   }
-  
-  switch_to(me, next);
 }
 
 uint64_t get_rflags_asm()
@@ -93,7 +133,9 @@ void create_kernel_thread(uint64_t* func_ptr){
   uint64_t rflags = get_rflags_asm();
   *tmp-- = rflags;
   *tmp-- = (uint64_t)&pcb_struct[free_pcb];
-  pcb_struct[free_pcb].rsp -= 16;    // finaly value of RSP
+  volatile uint64_t last;
+  *tmp-- = (uint64_t)&last;
+  pcb_struct[free_pcb].rsp -= 24;    // finaly value of RSP
   
   //kprintf("rsp after i have Initialize process 2 -> %x\n",pcb_struct[free_pcb].rsp);
 

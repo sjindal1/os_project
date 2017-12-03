@@ -37,8 +37,11 @@ switch_to:
 
 	// actual switch to functionality
 	pushq %rdi; 				//save me to my stack
+	pushq %rdx;         //save last on my stack
 	movq %rsp, 8(%rdi); 		// save my rsp value in pcb
 	movq 8(%rsi), %rsp; 		// update the rsp value with the next process stack
+	popq %rdx;
+	movq %rdi, (%rdx);
 	popq %rdi; 					// update me to next task
 
     // restore the registers according to the new stack
@@ -72,6 +75,7 @@ switch_to:
 
 switch_out:
 	movq 8(%rdi), %rsp; 		// update the rsp value with the next process stack
+	popq %rdx;
 	popq %rdi; 					// update me to next task
 
     // restore the registers according to the new stack
@@ -187,6 +191,9 @@ set_child_stack:
 
 	subq $8, %rdi; //equivalent of switch function
 	movq %rsi, (%rdi);
+
+	subq $8, %rdi;
+	movq %rcx, (%rdi);
 
 	movq %rdi, 8(%rsi);
 

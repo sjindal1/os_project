@@ -22,6 +22,12 @@ void user_process_1();
 void rdmsr_read(uint32_t);
 void wrmsr_write(uint32_t, uint32_t, uint32_t);
 
+void clear_pcb(){
+  for(int i = 0; i<1024; i++){
+    pcb_struct[i].state = -1;
+  }
+}
+
 void main_task(){
 
   init_syscalls();
@@ -33,6 +39,7 @@ void main_task(){
   free_pcb++;
   no_of_task++;*/
 
+  clear_pcb(); //set all processes state as -1
   create_kernel_thread((uint64_t *)&kernel_1_thread);
   create_kernel_thread((uint64_t *)&kernel_2_thread);
 
