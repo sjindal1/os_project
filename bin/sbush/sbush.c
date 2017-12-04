@@ -1,139 +1,128 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
 #include <stdlib.h>
 
-void output(int num)
+char myenv[10][256];
+//char *penv[10];
+int test_var = 1000;
+int totalenv = 1;
+char args[10][256];
+
+void settheenviron(char *envp[])
 {
-;
-}
+  int i, j;
 
-/*void exit(int a){
-  __asm__ __volatile__ ("movq $60, %%rax\n\t"
-                        "movq %0, %%rdi\n\t"
-                        "syscall\n\t"
-                        :
-                        :"m"(a));
-}
-*/
-#if 1
-  
+  totalenv = 0;
 
-  char buf[] = "hello from sbush";
-  char ch[] = "in child";
-  char par[] = "in parent";
-
-int main(int argc, char *argv[], char *envp[]) {
-  //puts("sbush> ");
-  int pid = 0, rw = 0;
-  //int rw = 0;
-  char *buf1 = buf;
-  //rw = write(1, buf1, 16);
-  printf("printf ls %d", rw);
-  //rw = write(1, buf, 16);
-  pid = fork();
-  if(pid == 0)
+  for(i = 0; i < 10; i++)
   {
-    int i = 0;
-    while(i<2){
-      printf("%s\n", ch, rw);
-      i++;
+    //penv[i] = (char*)&myenv[i][0];
+
+    if(envp[i] == 0 || i > 9)
+      break;//return;
+
+    totalenv++;
+    for(j = 0; envp[i][j] != '\0'; j++)
+    {
+      if(j > 250) break;
+      myenv[i][j] = envp[i][j];
     }
-  }else{
-    int j = 0;
-    while(j < 2){
-      printf("%s\n", par);
-      j++;
+    myenv[i][j] = '\0';
+  }
+
+  //penv[totalenv] = (char*)&myenv[totalenv][0];
+
+  strcpy(&myenv[totalenv][0], "PS1=sbush-p");        // add "> " while display
+  totalenv++;
+
+  //penv[totalenv] = NULL;
+
+  //breakpath();
+  return;
+}
+
+void mprint(int err)
+{
+	;
+}
+
+void retps1pwd(char **b, int *pwd, char **strpwd)
+{
+  int i, j;
+
+  for(i = 0; i < totalenv; i++)
+  {
+    if(myenv[i][0] == 'P' &&
+        myenv[i][1] == 'S' &&
+         myenv[i][2] == '1' &&
+          myenv[i][3] == '=')
+    {
+      j = strlen(&myenv[i][4]);
+
+      *pwd = 0;
+      if(myenv[i][4+j-2] == '-' && myenv[i][4+j-1] == 'p')
+        *pwd = 1;
+
+      *b = &myenv[i][4];
     }
+  }
+
+  for(i = 0; i < totalenv; i++) {
+	  if(myenv[i][0] == 'P' &&
+		  myenv[i][1] == 'W' &&
+	  	 myenv[i][2] == 'D' &&
+	    	myenv[i][3] == '='){
+	  
+	  	*strpwd = &myenv[i][4];
+	  }
 
   }
 
-  write(1, buf1, 16);
-
-  /*int *p = (int *)100;
-  *p = 10;*/
-  while(1);
-
+  return;
 }
 
-#else
-int main(int argc, char *argv[], char *envp[]) {
-  //puts("sbush> ");
-  char buf[] = "hello from sbush";
-  //char ch[] = "in child";
-  char par[] = "in parent";
-  int pid = 0, rw = 0;
-  char *buf1 = buf;
-  rw = write(1, buf1, 16);
-  printf("printf working \n");
-  pid = fork();
+void display_prompt()
+{
+  char *buf = NULL;//, *buf1 = NULL;
+  int pwd, err;
+  char *pwdstr = NULL;
+  retps1pwd(&buf, &pwd, &pwdstr);
 
-  char *ls_args[] = {"ls", 0};
-  /*char *arg1[] ;
-  ls_args[0] = 
-*/
-  if(pid == 0)
+  if(pwd)
   {
-    //rw = write(1, &ch[0], 8);
-    //output(rw);
-    //execvpe(ls_args[0],ls_args,envp);
-    //while(1) ;
-
-    int child_pid = 0;
-
-    child_pid = fork();
-
-    if(child_pid == 0)
-    {
-      while(1){
-        printf("grandchild %d\n", child_pid);
-      }
-    }
-    else
-    {
-      int i = 0;
-      while(i<5){
-        printf("father %d\n", child_pid);
-        i++;
-      }
-      exit(1);
-    }
+    err = write(1, buf, strlen(buf)-2);
+    err = write(1, ":", 1);
+    err = write(1, pwdstr, strlen(pwdstr));
   }
   else
-  {
-    rw = write(1, &par[0], 9);
+    err = write(1, buf, strlen(buf));
 
-    waitpid(pid, NULL);
+  err = write(1, "> ", 2);
+  mprint(err);
 
-    int j =5;
-    while( j >=0){
-      printf(" parent ");
-      j--;
-    }
-    output(rw);
-  }
-
-  pid = fork();
-
-  if(pid == 0)
-  {
-    //rw = write(1, &ch[0], 8);
-    //output(rw);
-   execvpe(ls_args[0],ls_args,envp);
-  }
-  else
-  {
-    rw = write(1, &par[0], 9);
-
-    waitpid(pid, NULL);
-    printf("second time\n");
-  }
-
-  while(1){
-    //printf("grandparent\n");
-    ;
-  }
-  return 0;
+  return;
 }
 
-#endif
+int main(int argc, char *argv[], char *envp[]) {
+	int err;
+	settheenviron(envp);
+	char input_buf[256];
+	while(1)
+	{
+		display_prompt();
+		err = read(0,input_buf,256);
+		input_buf[err] = '\0';
+		int no_of_arguments = strspt(input_buf, args, ' ');
+	  for(int arg_no = 0; arg_no < no_of_arguments; arg_no++){
+	    printf("%s\n", args[arg_no]);
+	  }
+	  //char *command = args[0];
+
+		//I have to call read now
+		//while(1);
+	}
+
+	return 0;
+}
 

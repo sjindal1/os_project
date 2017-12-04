@@ -166,12 +166,21 @@ uint64_t* kmalloc(uint64_t size){
   return (uint64_t *)start_va_add;
 }
 
+void zero_out_page(uint64_t p_add){
+  uint64_t *va_add = (uint64_t *)get_va_add(p_add);
+  for (int i = 0; i < 512; ++i)
+  {
+    va_add[i] = 0;
+  }
+}
+
 //returns the first free page from the free_list
 uint64_t* get_free_page(){
   page_frame_t *t = free_page;
   t->info = 1 | (uint64_t)1 << 32;
   free_page = t->next;
   t->ref_count = 1;
+  zero_out_page((uint64_t)t->start);
   return t->start;
 }
 

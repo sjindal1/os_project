@@ -10,5 +10,8 @@ int strcmp(int8_t *string1, int8_t *string2);
 
 int strlen(int8_t *str);
 
+int strcpy(char *s1, char *s2);
+
+int strspt(char * input, char str[][256], char delim);
 
 #endif

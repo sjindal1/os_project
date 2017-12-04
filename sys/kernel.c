@@ -2,6 +2,7 @@
 #include <sys/kprintf.h>
 #include <sys/syscalls.h>
 #include <sys/paging.h>
+#include <sys/vfs.h>
 #include <sys/kernel.h>
 
 void switch_to(pcb* , pcb*, volatile pcb**);
@@ -290,14 +291,19 @@ void page_fault_handle(){
       }else{
         uint64_t *p_add = get_free_page();
         create_pf_pt_entry(p_add, (uint64_t)va_start);
-        uint64_t *elf_start = (uint64_t *)(pcb_struct[current_process].elf_start + vma->offset_fs);
-        for(int i=0;i<512;i++){
-          va_start[i] = elf_start[i];
+        uint8_t *elf_start = (uint8_t *)(pcb_struct[current_process].elf_start + vma->offset_fs);
+        uint8_t *va_start_byte = (uint8_t *)va_start;
+        for(int i=0;i < 4096;i++){
+          va_start_byte[i] = elf_start[i];
         }
       }
     }
 
   }else{ // SEGMENTATION FAULT
     kprintf("Inside SEGMENTATION FAULT\n");
+    _vfswrite(1, (uint8_t *)"SEGMENTATION FAULT\n", 19);
+    pcb_struct[current_process].exit_status = 9;
+    pcb_struct[current_process].state = 3;
+    yield();
   }
 }

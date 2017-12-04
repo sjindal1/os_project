@@ -1,5 +1,6 @@
 
 .global write
+.global read
 .global fork
 .global execvpe
 .global getpid

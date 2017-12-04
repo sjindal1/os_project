@@ -24,3 +24,36 @@ int strlen(int8_t *str)
   return len;
 }
 
+
+void strcpy(char *s1, char *s2)
+{
+  int i = 0;
+
+  for(i = 0; s2[i] != '\0'; i++)
+    s1[i] = s2[i];
+  s1[i] = '\0';
+
+  return;
+}
+
+int strspt(char * input, char str[][256], char delim){
+  int i=0,j=0,k=0;
+  for(;input[i] != '\0';i++){
+    if(input[i] == delim){
+      if(k>0){
+        str[j][k]= '\0';
+        k=0;
+        j++;
+      }
+    }else{
+      str[j][k] = input[i];
+      k++;
+    }
+  }
+  if(k>0){
+    str[j][k]='\0';
+    j++;
+  }
+  str[j][0]='\0';
+  return j;
+}

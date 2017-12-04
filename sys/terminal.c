@@ -5,10 +5,10 @@
 #include <sys/kernel.h>
 #include <sys/terminal.h>
 
-#define ystart 18
+#define ystart 12
 #define txmax 80
-#define tymax 5
-#define ncmdbuf  8
+#define tymax 11
+#define ncmdbuf 2
 #define cmdbufsiz 128
 
 void _termdisplayBuff();
@@ -260,6 +260,10 @@ uint64_t _termread(uint8_t * user_buf, uint64_t size){
 		cur_read_bufy++;
 	}else{
 		bufinfo[cur_read_bufy].xpos = size;
+	}
+
+	if(cur_read_bufy == ncmdbuf){
+		cur_read_bufy = 0;
 	}
 	kprintf("returning from read user_buf - %s",user_buf);
 	return no_bytes_copy;

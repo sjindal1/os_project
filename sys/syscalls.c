@@ -173,6 +173,12 @@ void create_pcb_copy(){
   	pcb_struct[free_pcb].vma[i].permissions = pcb_struct[current_process].vma[i].permissions;
   }
 
+  pcb_struct[free_pcb].vma_stack.startva = pcb_struct[current_process].vma_stack.startva;
+  pcb_struct[free_pcb].vma_stack.size = pcb_struct[current_process].vma_stack.size;
+  pcb_struct[free_pcb].vma_stack.next = pcb_struct[current_process].vma_stack.next;
+  pcb_struct[free_pcb].vma_stack.offset_fs = pcb_struct[current_process].vma_stack.offset_fs;
+  pcb_struct[free_pcb].vma_stack.permissions = pcb_struct[current_process].vma_stack.permissions;
+
   //make a copy of the parent stack
   uint64_t *parent_stack = pcb_struct[current_process].kstack;
   uint64_t *child_stack = pcb_struct[free_pcb].kstack;
