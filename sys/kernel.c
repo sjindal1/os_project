@@ -211,16 +211,54 @@ void create_pcb_stack(uint64_t *user_cr3,uint64_t va_func){
   no_of_task++;
 }
 
+uint64_t get_pt_va_add(uint64_t v_add){
+  uint32_t va_pml4_off = get_pml4(v_add);
+  uint32_t va_pdp_off = get_pdp(v_add);
+  uint32_t va_pd_off = get_pd(v_add);
+
+  uint64_t return_add = (uint64_t)0xFFFFFF8000000000 | (uint64_t)(va_pml4_off <<30) | (uint64_t)(va_pdp_off <<21) | (uint64_t)(va_pd_off <<12);
+  return return_add;
+}
+
 //TODO
 //Parse complete VMA and properties to check if it it executable and we need to copy
 //or it is dynamic memory allocation in that case just allocate a page and create mapping
 void page_fault_handle(){
 	kprintf("cr2 - %x, pf_error_code - %x\n", pf_cr2, pf_error_code);
-	uint64_t *p_add = get_free_page();
-	uint64_t *va_start = (uint64_t *)(pf_cr2 & 0xFFFFFFFFFFFFF000); 
-  create_pf_pt_entry(p_add, (uint64_t)va_start);
-  uint64_t *elf_start = (uint64_t *)pcb_struct[current_process].elf_start;
-  for(int i=0;i<512;i++){
-  	va_start[i] = elf_start[i];
+  uint64_t *va_start = (uint64_t *)(pf_cr2 & 0xFFFFFFFFFFFFF000);
+
+  if(va_entry_exists((uint64_t)va_start) == 0 ){
+  
+    //check the ref count get pt table entry using the same approach as kfree
+    uint64_t pt_off = get_pt((uint64_t)va_start);
+    uint64_t *pt_va = (uint64_t *)get_pt_va_add((uint64_t)va_start);
+    uint64_t pt_p_add = pt_va[pt_off];
+
+    if(pt_p_add != 0x2 && (pt_p_add & 0x800) == 0x800){ //COW entry
+
+      uint64_t page_index = (uint64_t)pt_p_add/4096;
+      page_frame_t *t_start = head + page_index;
+      
+      if(t_start->ref_count == 1)        // just update the entry remove COW and return
+      {
+        pt_va[pt_off] = (pt_p_add & 0xFFFFFFFFFFFFF000) | 0x7; 
+      }else{                             // decrement the ref count create a new entry and copy data 
+        t_start->ref_count -= 1;
+        uint64_t *p_add = get_free_page();
+        //create_pf_pt_entry(p_add, (uint64_t)va_start);
+        uint64_t *new_page_va_add  = (uint64_t *)get_va_add((uint64_t)p_add);
+        for(int i=0;i<512;i++){
+          new_page_va_add[i] = va_start[i];
+        }
+        pt_va[pt_off] = (uint64_t)p_add | USERPAG; 
+      }
+    }
+  }else{
+    uint64_t *p_add = get_free_page();
+    create_pf_pt_entry(p_add, (uint64_t)va_start);
+    uint64_t *elf_start = (uint64_t *)pcb_struct[current_process].elf_start;
+    for(int i=0;i<512;i++){
+      va_start[i] = elf_start[i];
+    }
   }
 }

@@ -15,6 +15,39 @@ void output(int num)
                         :"m"(a));
 }
 */
+#if 1
+  
+
+
+int main(int argc, char *argv[], char *envp[]) {
+  //puts("sbush> ");
+  char buf[] = "hello from sbush";
+  char ch[] = "in child";
+  char par[] = "in parent";
+  int pid = 0, rw = 0;
+  char *buf1 = buf;
+  rw = write(1, buf1, 16);
+  printf("printf working %d", rw);
+  pid = fork();
+  if(pid == 0)
+  {
+    int i = 0;
+    while(i<2){
+      printf("%s\n", ch);
+    }
+  }else{
+    int j = 0;
+    while(j > 2){
+      printf("%s\n", par);
+    }
+
+  }
+
+  while(1);
+
+}
+
+#else
 int main(int argc, char *argv[], char *envp[]) {
   //puts("sbush> ");
   char buf[] = "hello from sbush";
@@ -94,4 +127,5 @@ int main(int argc, char *argv[], char *envp[]) {
   return 0;
 }
 
+#endif
 

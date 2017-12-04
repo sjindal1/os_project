@@ -563,6 +563,37 @@ void  update_global_pointers(){
   va_free_page->next = NULL;
 }
 
+uint8_t va_entry_exists(uint64_t v_add){
+  invlpg((uint64_t *)v_add);
+  uint32_t pf_pml4_off = get_pml4(v_add);
+  uint32_t pf_pdp_off = get_pdp(v_add);
+  uint32_t pf_pd_off = get_pd(v_add);
+  uint32_t pf_pt_off = get_pt(v_add);
+
+  uint8_t flag = 0; //does not exist
+  uint64_t *va_pml4 = (uint64_t *)get_va_add(pcb_struct[current_process].cr3);
+  if((va_pml4[pf_pml4_off] & 0x1) == 0){ //check for present bit     
+    flag = 1;
+  }else{
+    uint64_t *va_pdp = (uint64_t *)get_va_add((uint64_t)va_pml4[pf_pml4_off] & 0xFFFFFFFFFFFFF000);
+    if((va_pdp[pf_pdp_off] & 0x1) == 0){
+      flag = 1;
+    }else{
+      uint64_t *va_pd = (uint64_t *)get_va_add((uint64_t)va_pdp[pf_pdp_off] & 0xFFFFFFFFFFFFF000);
+      if((va_pd[pf_pd_off] & 0x1) == 0){
+        flag = 1;
+      }else{
+        uint64_t *va_pt = (uint64_t *)get_va_add((uint64_t)va_pd[pf_pd_off] & 0xFFFFFFFFFFFFF000);
+        if((va_pt[pf_pt_off] & 0x1) == 0){
+          flag = 1;
+        }
+      }
+    }    
+  }
+
+  return flag;
+}
+
 void create_1_level_pages(uint64_t *va_pt, uint64_t *p_add, uint64_t v_add){
   uint32_t pf_pt_off = get_pt(v_add);
   va_pt[pf_pt_off] = (uint64_t)p_add | USERPAG;

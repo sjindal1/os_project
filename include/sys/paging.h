@@ -4,13 +4,15 @@
 #define HEAP_START_ADD 0xFFFFFFFF90010000
 #define ONEMAPADD 0xFFFFFFFD00000000
 
+typedef struct page_frame_t page_frame_t;
+
 extern char kernmem, physbase;
+extern page_frame_t *head;
 
 void create4KbPages(uint32_t *modulep,void *physbase, void *physfree);
 
 uint64_t* get_free_page();
 
-typedef struct page_frame_t page_frame_t;
 
 void  update_global_pointers();
 
@@ -37,6 +39,10 @@ uint64_t makepagetablecopy(uint64_t);
 uint64_t get_va_add(uint64_t p_add);
 
 void invalidate_tlb();
+
+void page_inc_ref_count(uint64_t pa_add);
+
+uint8_t va_entry_exists(uint64_t v_add);
 
 uint64_t get_pml4(uint64_t kermem);
 uint64_t get_pdp(uint64_t kermem);
