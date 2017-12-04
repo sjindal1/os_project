@@ -18,31 +18,39 @@ void output(int num)
 #if 1
   
 
-
-int main(int argc, char *argv[], char *envp[]) {
-  //puts("sbush> ");
   char buf[] = "hello from sbush";
   char ch[] = "in child";
   char par[] = "in parent";
+
+int main(int argc, char *argv[], char *envp[]) {
+  //puts("sbush> ");
   int pid = 0, rw = 0;
+  //int rw = 0;
   char *buf1 = buf;
-  rw = write(1, buf1, 16);
-  printf("printf working %d", rw);
+  //rw = write(1, buf1, 16);
+  printf("printf ls %d", rw);
+  //rw = write(1, buf, 16);
   pid = fork();
   if(pid == 0)
   {
     int i = 0;
     while(i<2){
-      printf("%s\n", ch);
+      printf("%s\n", ch, rw);
+      i++;
     }
   }else{
     int j = 0;
-    while(j > 2){
+    while(j < 2){
       printf("%s\n", par);
+      j++;
     }
 
   }
 
+  write(1, buf1, 16);
+
+  /*int *p = (int *)100;
+  *p = 10;*/
   while(1);
 
 }

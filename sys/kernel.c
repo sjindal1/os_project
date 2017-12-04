@@ -220,45 +220,84 @@ uint64_t get_pt_va_add(uint64_t v_add){
   return return_add;
 }
 
+uint8_t is_valid_va(uint64_t v_add, vma_type **vma){
+  uint8_t flag= 1; //is not valid
+
+  pcb *p = &pcb_struct[current_process];
+
+  for(int i = p->numvma-1; i>=0 ;i--){ 
+    if(v_add >= p->vma[i].startva && v_add <= (p->vma[i].startva + p->vma[i].size)){
+      *vma = &(pcb_struct[current_process].vma[i]);
+      flag = 0;
+      return flag;
+    }
+  }
+  if(flag == 1){
+    vma_type *vma_stack = &p->vma_stack;
+    if(v_add >= vma_stack->startva && v_add <= (vma_stack->startva + vma_stack->size)){
+      *vma = (vma_type *)NULL;
+      flag = 0;
+    }else if(v_add <= vma_stack->startva - 10*4096){
+      vma_stack->size += ((v_add % 0xFFFFFFFFFFFFF000) - vma_stack->startva);
+      vma_stack->startva = (v_add % 0xFFFFFFFFFFFFF000);
+      *vma = (vma_type *)NULL;
+      flag = 0;
+    }
+  }
+
+  return flag;
+}
+
 //TODO
 //Parse complete VMA and properties to check if it it executable and we need to copy
 //or it is dynamic memory allocation in that case just allocate a page and create mapping
 void page_fault_handle(){
 	kprintf("cr2 - %x, pf_error_code - %x\n", pf_cr2, pf_error_code);
-  uint64_t *va_start = (uint64_t *)(pf_cr2 & 0xFFFFFFFFFFFFF000);
+  vma_type *vma = NULL; 
+  uint8_t is_valid = is_valid_va(pf_cr2, &vma);
+  if(is_valid == 0){  // VALID VMA
+    uint64_t *va_start = (uint64_t *)(pf_cr2 & 0xFFFFFFFFFFFFF000);
+    if(vma == NULL){
+      uint64_t *p_add = get_free_page();
+      create_pf_pt_entry(p_add, (uint64_t)va_start);
+    }else{
 
-  if(va_entry_exists((uint64_t)va_start) == 0 ){
-  
-    //check the ref count get pt table entry using the same approach as kfree
-    uint64_t pt_off = get_pt((uint64_t)va_start);
-    uint64_t *pt_va = (uint64_t *)get_pt_va_add((uint64_t)va_start);
-    uint64_t pt_p_add = pt_va[pt_off];
-
-    if(pt_p_add != 0x2 && (pt_p_add & 0x800) == 0x800){ //COW entry
-
-      uint64_t page_index = (uint64_t)pt_p_add/4096;
-      page_frame_t *t_start = head + page_index;
+      if(va_entry_exists((uint64_t)va_start) == 0 ){
       
-      if(t_start->ref_count == 1)        // just update the entry remove COW and return
-      {
-        pt_va[pt_off] = (pt_p_add & 0xFFFFFFFFFFFFF000) | 0x7; 
-      }else{                             // decrement the ref count create a new entry and copy data 
-        t_start->ref_count -= 1;
-        uint64_t *p_add = get_free_page();
-        //create_pf_pt_entry(p_add, (uint64_t)va_start);
-        uint64_t *new_page_va_add  = (uint64_t *)get_va_add((uint64_t)p_add);
-        for(int i=0;i<512;i++){
-          new_page_va_add[i] = va_start[i];
+        //check the ref count get pt table entry using the same approach as kfree
+        uint64_t pt_off = get_pt((uint64_t)va_start);
+        uint64_t *pt_va = (uint64_t *)get_pt_va_add((uint64_t)va_start);
+        uint64_t pt_p_add = pt_va[pt_off];
+
+        if(pt_p_add != 0x2 && (pt_p_add & 0x800) == 0x800){ //COW entry
+
+          uint64_t page_index = (uint64_t)pt_p_add/4096;
+          page_frame_t *t_start = head + page_index;
+          
+          if(t_start->ref_count == 1)        // just update the entry remove COW and return
+          {
+            pt_va[pt_off] = (pt_p_add & 0xFFFFFFFFFFFFF000) | 0x7; 
+          }else{                             // decrement the ref count create a new entry and copy data 
+            t_start->ref_count -= 1;
+            uint64_t *p_add = get_free_page();
+            uint64_t *new_page_va_add  = (uint64_t *)get_va_add((uint64_t)p_add);
+            for(int i=0;i<512;i++){
+              new_page_va_add[i] = va_start[i];
+            }
+            pt_va[pt_off] = (uint64_t)p_add | USERPAG; 
+          }
         }
-        pt_va[pt_off] = (uint64_t)p_add | USERPAG; 
+      }else{
+        uint64_t *p_add = get_free_page();
+        create_pf_pt_entry(p_add, (uint64_t)va_start);
+        uint64_t *elf_start = (uint64_t *)(pcb_struct[current_process].elf_start + vma->offset_fs);
+        for(int i=0;i<512;i++){
+          va_start[i] = elf_start[i];
+        }
       }
     }
-  }else{
-    uint64_t *p_add = get_free_page();
-    create_pf_pt_entry(p_add, (uint64_t)va_start);
-    uint64_t *elf_start = (uint64_t *)pcb_struct[current_process].elf_start;
-    for(int i=0;i<512;i++){
-      va_start[i] = elf_start[i];
-    }
+
+  }else{ // SEGMENTATION FAULT
+    kprintf("Inside SEGMENTATION FAULT\n");
   }
 }

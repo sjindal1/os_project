@@ -44,7 +44,7 @@ void parsetheprogramheader(pcb *p, int16_t efd, uint64_t pgoffset, uint32_t size
 		{
 			p->vma[vma_count].startva = phhdr.p_vaddr;
 			p->vma[vma_count].size = phhdr.p_memsz;
-			p->vma[vma_count].offset_fs = offset;			///*************** check this
+			p->vma[vma_count].offset_fs = phhdr.p_offset;			///*************** check this
 			p->vma[vma_count].permissions = phhdr.p_flags;
 
 			vma_count++;
