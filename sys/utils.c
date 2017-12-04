@@ -108,3 +108,47 @@ void strConcat(uint8_t *first, uint8_t *second, uint8_t *final){
   }
   final[i+j] = '\0';
 }
+
+
+void reverse(uint8_t *str, int len)
+{
+    uint16_t st = 0;
+    uint16_t end = len -1;
+    uint8_t c;
+
+    while (st < end)
+    {
+        c = str[st];
+        str[st] = str[end];
+        str[end] = c;
+
+        st++;
+        end--;
+    }
+}
+
+void itoa(uint32_t x, uint8_t *str)
+{
+  uint16_t y, i =0;
+
+  if(x == 0) 
+    {
+        str[i++] = '0';
+        str[i] = '\0';
+        return;
+    }
+
+  while(x > 0)
+  {
+    y = x % 10;
+    str[i++] = y + '0';
+    x = x / 10;
+  }
+ 
+    str[i] = '\0';
+ 
+    // Reverse the string
+    reverse(str, i);
+
+    return;
+}

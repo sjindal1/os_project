@@ -17,6 +17,7 @@ uint64_t _sysgetpid(syscall_params *params);
 uint64_t _sysgetppid(syscall_params *params);
 uint64_t _syswaitpid(syscall_params *params);
 uint64_t _sysopen(syscall_params *params);
+uint64_t _sysps(syscall_params *params);
 
 void switch_to_ring3(uint64_t *, uint64_t);
 
@@ -43,10 +44,10 @@ void init_syscalls(){
   wrmsr(0xC0000082, (uint64_t)&syscall_handle);
   uint64_t efer = rdmsr(0xC0000080);
   wrmsr(0xC0000080, (uint64_t)(efer|0x1));
-  uint64_t star = rdmsr(0xC0000081);
+  /*uint64_t star = rdmsr(0xC0000081);
   uint64_t lstar = rdmsr(0xC0000082);
   uint64_t cstar = rdmsr(0xC0000083);
-  uint64_t sfmask = rdmsr(0xC0000084);
+  uint64_t sfmask = rdmsr(0xC0000084);*/
   sysfunc[0] = &_sysread;
   sysfunc[1] = &_syswrite;
   sysfunc[2] = &_sysopen;
@@ -56,7 +57,11 @@ void init_syscalls(){
   sysfunc[61] = &_syswaitpid;
   sysfunc[39] = &_sysgetpid;
   sysfunc[110] = &_sysgetppid;
-  kprintf("efer ->%x, star -> %x, lstar -> %x, cstar -> %x, sfmask -> %x\n", efer, star, lstar, cstar, sfmask);
+
+  // Our OS functionalities
+  sysfunc[10] = &_sysps;
+
+  // kprintf("efer ->%x, star -> %x, lstar -> %x, cstar -> %x, sfmask -> %x\n", efer, star, lstar, cstar, sfmask);
 }
 
 uint64_t last = 0;
@@ -330,4 +335,33 @@ uint64_t _sysgetppid(syscall_params *params)
 	return pcb_struct[current_process].ppid;
 }
 
+
+uint64_t _sysps(syscall_params *params)
+{
+  uint16_t i;
+  uint8_t buf[50];
+
+   _vfswrite(1, (uint8_t *)"PID   TTY   NAME   ", 13);
+  for(i = 0; i < MAX_PROC; i++)
+  {
+    if(pcb_struct[0].state != -1)
+    {
+      itoa(pcb_struct[0].pid, (uint8_t*)&buf[0]);
+
+      _vfswrite(1, (uint8_t*) buf, strlen(buf));
+      _vfswrite(1, (uint8_t*) "  TTY/0", 7);
+
+      if(i == 0)
+        _vfswrite(1, (uint8_t*) "  Kernel", 8);
+      else if(i == 1)
+        _vfswrite(1, (uint8_t*) "  sbush", 7);
+      else if(i == current_process)
+        _vfswrite(1, (uint8_t*) "  ps", 2);
+      else
+        _vfswrite(1, (uint8_t*) "  Kthread", 9);
+    }
+  }
+
+  return 0;
+}
 

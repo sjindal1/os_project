@@ -17,6 +17,10 @@ int strcontains(uint8_t *input, uint8_t uint8_tacter);
 
 uint8_t strlastuint8_t(uint8_t *input);
 
+void reverse(uint8_t *str, int len);
+
+void itoa(uint32_t x, uint8_t *str);
+
 uint8_t* trimwhitespaces(uint8_t *input);
 
 #endif

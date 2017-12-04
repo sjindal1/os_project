@@ -84,7 +84,21 @@ uint64_t _termwrite(uint8_t *final_str, uint64_t size){
 	    	}
 	    	array_pos++;
 	    	break;
-	    }else if(array_pos == size){
+	    }/*else if(final_str[array_pos] == '\t'){
+	    	int16_t p = _term_x_pos % 8;
+	    	int16_t r = _term_x_pos;
+	    	p = 8 - p;
+	    	for(int tabspace = 0; tabspace < p; tabspace++, r++)
+	    	{
+	    		if(r < txmax) {
+		    		_termbuf[_term_y_pos][r] = ' ';
+		    		_term_x_pos++;
+	    		}
+	    	}
+	    	_term_x_pos--;
+	    	array_pos++;
+	    	break;
+	    }*/else if(array_pos == size){
 	        break;
 	    }
 	    else if(final_str[array_pos] == '\0'){

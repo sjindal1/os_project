@@ -23,7 +23,7 @@ void rdmsr_read(uint32_t);
 void wrmsr_write(uint32_t, uint32_t, uint32_t);
 
 void clear_pcb(){
-  for(int i = 0; i<1024; i++){
+  for(int i = 0; i<MAX_PROC; i++){
     pcb_struct[i].state = -1;
   }
 }

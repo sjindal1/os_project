@@ -1,6 +1,8 @@
 #ifndef _KERNEL_H
 #define _KERNEL_H
 
+#define MAX_PROC 1024
+
 void main_task();
 
 typedef struct pcb pcb;
@@ -40,8 +42,8 @@ struct pcb
   uint8_t numvma;				// number of valid VMA entries
   uint64_t elf_start;
   uint64_t ppid;
-  uint8_t my_child[1024];
-  uint8_t wait_child[1024];
+  uint8_t my_child[MAX_PROC];
+  uint8_t wait_child[MAX_PROC];
   uint8_t wait_for_any_proc;
 };
 

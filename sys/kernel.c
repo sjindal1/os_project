@@ -7,7 +7,7 @@
 
 void switch_to(pcb* , pcb*, volatile pcb**);
 
-pcb pcb_struct[1024];
+pcb pcb_struct[MAX_PROC];
 int free_pcb=0;
 int no_of_task=0;
 int current_process=0;
@@ -56,7 +56,7 @@ void clean_up(volatile pcb *last){
   }else if(parent->wait_child[last->pid] == 1){
     parent->wait_child[last->pid] = 0;
     int flag = 0;
-    for(int i = 0; i<1024; i++){
+    for(int i = 0; i<MAX_PROC; i++){
       if(parent->wait_child[i] == 1){
         flag = 1;
         break;
@@ -82,14 +82,14 @@ void yield(){
     current_process = 0;
   }*/else{
   	int i;
-    for(i=current_process+1; i<1024; i++){
+    for(i=current_process+1; i<MAX_PROC; i++){
       if(pcb_struct[i].state == 0){
       	next = &pcb_struct[i];
       	current_process = i;
       	break;
       }
     }
-    if(i==1024){
+    if(i==MAX_PROC){
       next = &pcb_struct[0];
       current_process = 0;
     }
