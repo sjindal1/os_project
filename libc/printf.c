@@ -7,7 +7,7 @@
 
 char *getStrFromInt(char *str, int arg_val, int code_type);
 char *getStrFromUnsignlong(char *str, unsigned long arg_val, int code_type);
-char *strconcat(char *dest, char* str1, char* str2);
+char *strConcat(char *dest, char* str1, char* str2);
 void displayBuff();
 
 
@@ -48,7 +48,7 @@ void printf(const char *fmt, ...){
                         str1 = getStrFromUnsignlong(str, va_arg(valist,unsigned long), 16);
                         break;
                     case 'p' :
-                        str1 = strconcat(str,"0x",getStrFromUnsignlong(str_pointer, va_arg(valist,unsigned long), 16));
+                        str1 = strConcat(str,"0x",getStrFromUnsignlong(str_pointer, va_arg(valist,unsigned long), 16));
                         break;
                     default :
                         ;
@@ -70,7 +70,7 @@ void printf(const char *fmt, ...){
  	return;
 }
 
-char *strconcat(char *dest, char *str1,  char *str2){
+char *strConcat(char *dest, char *str1,  char *str2){
     int i=0;
     for(;str1[i]!='\0';i++){
         dest[i] = str1[i];

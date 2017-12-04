@@ -14,4 +14,8 @@ int strcpy(char *s1, char *s2);
 
 int strspt(char * input, char str[][256], char delim);
 
+int strStartsWith(char origStr[], char checkStr[]);
+
+void strconcat(char *first, char *second, char *final);
+
 #endif

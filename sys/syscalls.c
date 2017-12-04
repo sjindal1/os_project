@@ -16,6 +16,7 @@ uint64_t _sysexec(syscall_params *params);
 uint64_t _sysgetpid(syscall_params *params);
 uint64_t _sysgetppid(syscall_params *params);
 uint64_t _syswaitpid(syscall_params *params);
+uint64_t _sysopen(syscall_params *params);
 
 void switch_to_ring3(uint64_t *, uint64_t);
 
@@ -48,6 +49,7 @@ void init_syscalls(){
   uint64_t sfmask = rdmsr(0xC0000084);
   sysfunc[0] = &_sysread;
   sysfunc[1] = &_syswrite;
+  sysfunc[2] = &_sysopen;
   sysfunc[57] = &_sysfork;
   sysfunc[59] = &_sysexec;
   sysfunc[60] = &_sysexit;
@@ -112,6 +114,12 @@ uint64_t kernel_syscall()
 	kfree((uint64_t *)params);
 
 	return retval;
+}
+
+uint64_t _sysopen(syscall_params *params){
+  uint8_t *filename = (uint8_t *)params->p1;
+  filename++; // tarfs starts from bin and not /bin so removing one character
+  return _vfsopen(filename);
 }
 
 uint64_t _syswrite(syscall_params *params){

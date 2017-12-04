@@ -7,6 +7,7 @@
 .global getppid
 .global waitpid
 .global exit
+.global open
 
 // cc - rdi, rsi, rdx, rcx, r8, r9
 // stdin - rdi
@@ -59,5 +60,10 @@ waitpid:
 
 exit:
 	movq $60, %rax
+	syscall;
+	retq;
+
+open:
+	movq $2, %rax;
 	syscall;
 	retq;

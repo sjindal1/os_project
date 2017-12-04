@@ -62,6 +62,7 @@ uint64_t copy_argv(uint64_t user_arg_va, uint64_t *user_st_va, uint8_t **argv_pr
     st_add[k++] = '\0';
 
     st_add = st_add + len + 8;
+    i++;
     j--;
   }
 
@@ -133,7 +134,7 @@ uint64_t _tarfs_read(uint64_t start_add, uint8_t *buf, uint32_t size){
 }
 
 void init_tarfs(){
-  kprintf("tarfs start %x tarfs end %x\n", &_binary_tarfs_start,&_binary_tarfs_end);
+  //kprintf("tarfs start %x tarfs end %x\n", &_binary_tarfs_start,&_binary_tarfs_end);
   posix_header_ustar* temp = (posix_header_ustar*)&_binary_tarfs_start;
   uint8_t* byteptr = (uint8_t*) temp;
   while((uint64_t) temp < (uint64_t) &_binary_tarfs_end){//|| (uint64_t) temp < (uint64_t) &_binary_tarfs_end){
@@ -154,7 +155,7 @@ void init_tarfs(){
     ftarinfo[tarfsfilecount].fsize = int_size;
     ftarinfo[tarfsfilecount].fstartaddr = (uint64_t)(byteptr - int_size);
 
-    kprintf("n -> %s, s_int -> %d, temp - %x, fs -> %x \n", temp->name, int_size, temp, ftarinfo[tarfsfilecount].fstartaddr);
+    //kprintf("n -> %s, s_int -> %d, temp - %x, fs -> %x \n", temp->name, int_size, temp, ftarinfo[tarfsfilecount].fstartaddr);
 
     temp = (posix_header_ustar*) byteptr;
     tarfsfilecount++;

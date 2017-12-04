@@ -235,12 +235,12 @@ void kernel_1_thread(){
 
 void kernel_2_thread(){
   while(1){
-    kprintf("This is the second kernel thread\n");
+    //kprintf("This is the second kernel thread\n");
     //user process init
     /*uint64_t func_ptr = (uint64_t)&user_process_1;
     user_process_init((uint64_t*)func_ptr,1);*/
     yield();
-    kprintf("returning to kernel_2_thread\n");
+    //kprintf("returning to kernel_2_thread\n");
   }
   while(1){};
 }

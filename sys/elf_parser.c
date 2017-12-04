@@ -29,10 +29,10 @@ void parsetheprogramheader(pcb *p, int16_t efd, uint64_t pgoffset, uint32_t size
 
 		_vfsread(efd, (uint8_t *) &phhdr, size);
 
-		kprintf("p_type =%x p_flags = %x \n", phhdr.p_type, phhdr.p_flags);
+		/*kprintf("p_type =%x p_flags = %x \n", phhdr.p_type, phhdr.p_flags);
 		kprintf("p_offset =%x p_vaddr = %x \n", phhdr.p_offset, phhdr.p_vaddr);
 		kprintf("p_paddr =%x p_filesz = %x \n", phhdr.p_paddr, phhdr.p_filesz);
-		kprintf("p_memsz =%x p_align = %x \n", phhdr.p_memsz, phhdr.p_align);
+		kprintf("p_memsz =%x p_align = %x \n", phhdr.p_memsz, phhdr.p_align);*/
 
 //uint64_t startva;
 //	uint64_t size;
@@ -64,11 +64,11 @@ uint32_t loadelffile(pcb *p, int16_t efd)
 	_vfsseek(efd, 0);
 	elfreadheader(efd, &elfhdr);
 
-	kprintf("elfhdr.e_entry =%x\n", elfhdr.e_entry);
+	/*kprintf("elfhdr.e_entry =%x\n", elfhdr.e_entry);
 	//kprintf("elfhdr.e_type =%x\n", elfhdr.e_type);
 	kprintf("elfhdr.e_phoff PG =%x\n", elfhdr.e_phoff);
 	kprintf("efelfhdrd.e_phentsize PG size =%x\n", elfhdr.e_phentsize);
-	kprintf("efelfhdrd.e_phnum PG elements =%x\n", elfhdr.e_phnum);
+	kprintf("efelfhdrd.e_phnum PG elements =%x\n", elfhdr.e_phnum);*/
 	
 	//_vfsseek(efd, elfhdr.e_phoff);
 	parsetheprogramheader(p, efd, elfhdr.e_phoff, elfhdr.e_phentsize, elfhdr.e_phnum);

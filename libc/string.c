@@ -57,3 +57,28 @@ int strspt(char * input, char str[][256], char delim){
   str[j][0]='\0';
   return j;
 }
+
+int strStartsWith(char origStr[], char checkStr[]){
+  int i=0, result=0;
+  while(checkStr[i] != '\0'){
+    if(origStr[i] == '\0' || origStr[i]!=checkStr[i]){
+      result = 1;
+      break;
+    }else{
+      i++;
+    }
+  }
+  return result;
+}
+
+void strconcat(char *first, char *second, char *final){
+  int i=0;
+  for(;first[i] != '\0';i++){
+    final[i] = first[i];
+  }
+  int j=0;
+  for(;second[j] != '\0';j++){
+    final[i+j] = second[j];
+  }
+  final[i+j] = '\0';
+}

@@ -95,7 +95,7 @@ void yield(){
     }
   }  
   switch_to(me, next, &last);
-  kprintf("last process pid %d\n", last->pid);
+  //kprintf("last process pid %d\n", last->pid);
   if(last->state == 3){
     clean_up(last);
   }
