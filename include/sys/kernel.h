@@ -2,6 +2,7 @@
 #define _KERNEL_H
 
 #define MAX_PROC 1024
+#define MAX_FDEFS 16
 
 void main_task();
 
@@ -35,7 +36,7 @@ struct pcb
   //enum { EXIT - -1, RUNNING - 0, SLEEPING - 1, WAITING -2, ZOMBIE -3 } state;
   int8_t state; 
   uint8_t exit_status;
-  filedes mfdes[16];
+  filedes mfdes[MAX_FDEFS];
   uint64_t _start_addr;			// Entry point from the elf header
   vma_type vma[32];
   vma_type vma_stack;

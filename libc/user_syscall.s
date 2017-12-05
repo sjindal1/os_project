@@ -9,6 +9,8 @@
 .global exit
 .global open
 .global pscmd
+.global close
+
 
 // cc - rdi, rsi, rdx, rcx, r8, r9
 // stdin - rdi
@@ -71,6 +73,11 @@ open:
 
 pscmd:
 	movq $10, %rax;
+	syscall;
+	retq;
+
+close:
+	movq $3, %rax;
 	syscall;
 	retq;
 

@@ -131,14 +131,14 @@ uint64_t _sysopen(syscall_params *params){
 
 uint64_t _sysclose(syscall_params *params){
   uint32_t fd = (uint32_t)params->p1;
-  if(fd == -1){
+  if(fd < 0 || fd > MAX_FDEFS || pcb_struct[current_process].mfdes[fd].status == 0){
     return -1;
   }else{
-    pcb_struct[current_process].mfdes[fd].status = 1;
+    pcb_struct[current_process].mfdes[fd].status = 0;
     pcb_struct[current_process].mfdes[fd].type = TARFS;
     pcb_struct[current_process].mfdes[fd].addr = 0;
     pcb_struct[current_process].mfdes[fd].offset = 0;
-    pcb_struct[current_process].mfdes[fd].permissions = 0xff;
+    pcb_struct[current_process].mfdes[fd].permissions = 0;
     pcb_struct[current_process].elf_start = 0;
   }
   return 0;
