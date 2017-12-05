@@ -126,11 +126,67 @@ void print_pwd(){
   } 
 }
 
+int chdir(const char *path){
+  char *fileptr = NULL;
 
-int8_t check_command_exists(){
-  char *fileptr;
+  char filename[256];
+  int i = 0;
 
-  char *path = args[0];
+  if(strStartsWith((char *)path, "/") == 0){
+    fileptr = (char *)path;
+  }else{    
+    while(penv[i] != 0){
+      char *env_var = penv[i];
+      if(strStartsWith(env_var, "PWD=") == 0){
+        char path_parts[3][256];
+        strspt(env_var, path_parts, '=');
+        strconcat(path_parts[1], (char *)path, filename);
+        fileptr = (char *)filename;
+        break;
+      }
+      i++;
+    }
+  }
+
+  if(strcmp((char *)path, "..") == 0){
+    int lastchar_path = strlen(penv[i]);
+    lastchar_path--; 
+    if(strcmp(penv[i], "PWD=/") != 0){
+      while(penv[i][--lastchar_path] != '/'); //lastchar_path-- would be "/" so start from one less 
+      penv[i][++lastchar_path] = '\0';
+      return 1;
+    }else{
+      return 0;
+    }
+  }
+
+  int lastchar = strlen(fileptr);
+  if(fileptr[lastchar -1] != '/'){
+    fileptr[lastchar] = '/';
+    fileptr[++lastchar] = '\0';
+  }
+  
+  int result = access(fileptr);
+  if(result == 1){
+    penv[i][0] = 'P';
+    penv[i][1] = 'W';
+    penv[i][2] = 'D';
+    penv[i][3] = '=';
+    int j = 4,k=0;
+    while(fileptr[k] != '\0'){
+      penv[i][j] = fileptr[k];
+      j++;
+      k++;
+    }
+    penv[i][j] = '\0';
+  }
+
+  return result; 
+}
+
+
+int8_t check_command_exists(char *path){
+  char *fileptr = NULL;
 
   char filename[256];
 
@@ -140,11 +196,12 @@ int8_t check_command_exists(){
     int i = 0;
     while(penv[i] != 0){
       char *env_var = penv[i];
-      if(strStartsWith(env_var, (char *)"PATH=") == 0){
+      if(strStartsWith(env_var, "PATH=") == 0){
         char path_parts[3][256];
         strspt(env_var, path_parts, '=');
         strconcat(path_parts[1], path, filename);
         fileptr = (char *)filename;
+        break;
       }
       i++;
     } 
@@ -162,10 +219,15 @@ void execute_commands(int no_of_arguments){
     printf("\n");
   }else if(strStartsWith(args[0], "pwd") == 0){
     print_pwd();
+  }else if(strStartsWith(args[0], "cd") == 0){
+    int result = chdir(args[1]);
+    if(result == 0){
+      printf("invalid directory\n");
+    }
   }else if(args[0][0] == '\0'){
     return;
   }else{
-    if(check_command_exists() == 1){      
+    if(check_command_exists(args[0]) == 1){      
       int pid = fork();
       if(pid == 0){
         myexec(no_of_arguments);
