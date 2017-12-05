@@ -20,6 +20,11 @@ uint64_t _sysopen(syscall_params *params);
 uint64_t _sysclose(syscall_params *params);
 uint64_t _sysps(syscall_params *params);
 uint64_t _sys_access(syscall_params *params);
+uint64_t _sysopendir(syscall_params *params);
+uint64_t _sysreaddir(syscall_params *params);
+uint64_t _sysclosedir(syscall_params *params);
+
+
 
 void switch_to_ring3(uint64_t *, uint64_t);
 
@@ -59,6 +64,11 @@ void init_syscalls(){
   sysfunc[59] = &_sysexec;
   sysfunc[60] = &_sysexit;
   sysfunc[61] = &_syswaitpid;
+
+  sysfunc[77] = &_sysopendir;
+  sysfunc[78] = &_sysreaddir;
+  sysfunc[79] = &_sysclosedir;
+
   sysfunc[39] = &_sysgetpid;
   sysfunc[110] = &_sysgetppid;
 
@@ -113,7 +123,7 @@ uint64_t kernel_syscall()
                           :"memory");
     /*volatile uint64_t *p_stack = pcb_struct[current_process].kstack;
     retval = p_stack[511];*/
-    kprintf("retval %d\n", retval);
+    //kprintf("retval %d\n", retval);
     return retval;
     //return pcb_struct[current_process].kstack[511];
 	}else{
@@ -129,6 +139,29 @@ uint64_t _sysopen(syscall_params *params){
   uint8_t *filename = (uint8_t *)params->p1;
   filename++; // tarfs starts from bin and not /bin so removing one character
   return _vfsopen(filename);
+}
+
+uint64_t _sysopendir(syscall_params *params){
+  uint8_t *filename = (uint8_t *)params->p1;
+  if(strcmp(filename, (uint8_t *)"/") == 0){ //root is special case
+    return 1;
+  }else{    
+    filename++; // tarfs starts from bin and not /bin so removing one character
+    return _vfsexists(filename);
+  }
+}
+
+uint64_t _sysclosedir(syscall_params *params){  
+  return 0;
+}
+
+uint64_t _sysreaddir(syscall_params *params){
+  uint8_t *path = (uint8_t *)params->p1;
+  if(strcmp(path, (uint8_t *)"/") != 0){
+    path++;
+  }
+  _vfsreaddir(path);
+  return 0;
 }
 
 uint64_t _sys_access(syscall_params *params){

@@ -701,7 +701,7 @@ uint64_t makepagetablecopy(uint64_t current_cr3)
       clear_page(new_pdp_page);
       newpml4page[i] = new_pdp | USERPAG;
       
-      kprintf("pml4 %x - %x\n", i , cur_va_pml4[i]);
+      //kprintf("pml4 %x - %x\n", i , cur_va_pml4[i]);
       
       uint64_t *cur_va_pdp = (uint64_t *)get_va_add((uint64_t)cur_va_pml4[i] & 0xFFFFFFFFFFFFF000);
       for(int j = 0; j<512;j++){
@@ -712,7 +712,7 @@ uint64_t makepagetablecopy(uint64_t current_cr3)
           clear_page(new_pd_page);
           new_pdp_page[j] = new_pd | USERPAG;
 
-          kprintf("pdp %x - %x, %x\n", j , cur_va_pdp[j], &cur_va_pdp[j]);
+          //kprintf("pdp %x - %x, %x\n", j , cur_va_pdp[j], &cur_va_pdp[j]);
  
           uint64_t *cur_va_pd = (uint64_t *)get_va_add((uint64_t)cur_va_pdp[j] & 0xFFFFFFFFFFFFF000);
           for(int k = 0; k<512;k++){

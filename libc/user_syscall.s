@@ -11,6 +11,9 @@
 .global pscmd
 .global close
 .global access
+.global readdir
+.global opendir
+.global closedir
 
 
 // cc - rdi, rsi, rdx, rcx, r8, r9
@@ -84,6 +87,21 @@ close:
 
 access:
 	movq $21, %rax;
+	syscall;
+	retq;
+
+opendir:
+	movq $77, %rax;
+	syscall;
+	retq;
+
+readdir:
+	movq $78, %rax;
+	syscall;
+	retq;
+
+closedir:
+	movq $79, %rax;
 	syscall;
 	retq;
 

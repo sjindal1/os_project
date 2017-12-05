@@ -176,7 +176,7 @@ void _termupdatecmdbuf(char str)
 			cmdbuf[cur_cmd_bufy][cur_cmd_xpos+1] = '\0';
 			bufinfo[cur_cmd_bufy].size = cur_cmd_xpos;
 			bufinfo[cur_cmd_bufy].valid = 1;
-			kprintf("%d %d %d %s\n", cur_cmd_bufy, bufinfo[cur_cmd_bufy].size, bufinfo[cur_cmd_bufy].valid, cmdbuf[cur_cmd_bufy]);
+			//kprintf("%d %d %d %s\n", cur_cmd_bufy, bufinfo[cur_cmd_bufy].size, bufinfo[cur_cmd_bufy].valid, cmdbuf[cur_cmd_bufy]);
 
 			cur_cmd_bufy++;
 			cur_cmd_xpos = 0;
@@ -247,7 +247,7 @@ void _term_keypress_handle(){
 }
 
 uint64_t _termread(uint8_t * user_buf, uint64_t size){
-	kprintf("inside term read, user_buf = %x, size = %d\n", user_buf, size);
+	//kprintf("inside term read, user_buf = %x, size = %d\n", user_buf, size);
 	uint64_t temp = 0;
 	while(1){
 		volatile uint8_t flag = bufinfo[cur_read_bufy].valid;
@@ -279,6 +279,6 @@ uint64_t _termread(uint8_t * user_buf, uint64_t size){
 	if(cur_read_bufy == ncmdbuf){
 		cur_read_bufy = 0;
 	}
-	kprintf("returning from read user_buf - %s",user_buf);
+	//kprintf("returning from read user_buf - %s",user_buf);
 	return no_bytes_copy;
 }

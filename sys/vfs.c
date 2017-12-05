@@ -131,3 +131,7 @@ void _vfsseek(int16_t fd, uint32_t offset)
 }
 
 
+void _vfsreaddir(uint8_t *path){
+	_tarfsreaddir(path);
+}
+

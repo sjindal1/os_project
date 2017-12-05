@@ -2,6 +2,7 @@
 #include <sys/kprintf.h>
 #include <sys/kernel.h>
 #include <sys/tarfs.h>
+#include <sys/vfs.h>
 #include <sys/utils.h>
 
 uint16_t tarfsfilecount = 0;
@@ -145,7 +146,9 @@ void init_tarfs(){
     uint32_t int_size = get_int_size(size);
     if(int_size>0){  
       uint32_t last = int_size % 512;
-      int_size = int_size + 512 - last;
+      if(last != 0){
+        int_size = int_size + 512 - last;
+      }
     }
 
     byteptr += int_size + 512;
@@ -164,3 +167,56 @@ void init_tarfs(){
   //set the environment variables
   set_kernel_environ();
 }
+
+
+void _tarfsreaddir(uint8_t *path){
+  uint16_t i;
+  uint16_t len = strlen(path);
+  uint8_t buf[100];
+  int k =0;
+  char c = '\0';
+
+  for(i = 0; i < tarfsfilecount; i++)
+  {
+    //kprintf(" skdf %s\n", ftarinfo[i].fname);
+    char * p = (char*) &ftarinfo[i].fname[0];
+    //kprintf(" %s p \n = ", p);
+    k = 0;
+    if(strcmp(path, (uint8_t *)"/") == 0){
+      while(p[k] != '\0'){
+        if(p[k] == '/') break;
+        buf[k] = p[k];
+        k++;
+      }
+
+      buf[k] = '\0';
+      //kprintf(" buf = %s \n", buf);
+      if(buf[0] != c) 
+      {
+        _vfswrite(1, buf, k);
+        _vfswrite(1, (uint8_t*) "   ", 3);
+        c = buf[0];
+      }
+    }else if(strStartsWith(ftarinfo[i].fname, path) == 0 && strcmp(ftarinfo[i].fname, path) != 0){
+      p = (char*) &ftarinfo[i].fname[len];
+
+      while(p[k] != '\0'){
+        if(p[k] == '/') break;
+        buf[k] = p[k];
+        k++;
+      }
+
+      buf[k] = '\0';
+      //kprintf(" buf = %s \n", buf);
+      if(buf[0] != c) 
+      {
+        _vfswrite(1, buf, k);
+        _vfswrite(1, (uint8_t*) "   ", 3);
+        c = buf[0];
+      }
+    //_vfswrite(1, (uint8_t*) "   ", 3);
+    }
+  }
+  _vfswrite(1, (uint8_t*) "\n", 1);
+}
+

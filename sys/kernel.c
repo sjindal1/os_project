@@ -49,7 +49,7 @@ void clean_up(volatile pcb *last){
   kfree(last->kstack);
 
   pcb_struct[last->pid].state = -1;   // put it to exit state
-  
+
   pcb *parent = &pcb_struct[last->ppid];
 
   if(parent->wait_for_any_proc == 1){
@@ -291,12 +291,18 @@ void page_fault_handle(){
           }
         }
       }else{
-        uint64_t *p_add = get_free_page();
-        create_pf_pt_entry(p_add, (uint64_t)va_start);
         uint8_t *elf_start = (uint8_t *)(pcb_struct[current_process].elf_start + vma->offset_fs);
-        uint8_t *va_start_byte = (uint8_t *)va_start;
-        for(int i=0;i < 4096;i++){
-          va_start_byte[i] = elf_start[i];
+        uint64_t size = vma->size;
+        size = (size+4095)/4096;
+        for(int count = 0; count<size; count++){
+          uint64_t *p_add = get_free_page();
+          create_pf_pt_entry(p_add, (uint64_t)va_start);
+          uint8_t *va_start_byte = (uint8_t *)va_start;
+          for(int i=0;i < 4096;i++){
+            va_start_byte[i] = elf_start[i];
+          }
+          elf_start += 4096;
+          va_start += 512;
         }
       }
     }
