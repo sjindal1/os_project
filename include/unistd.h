@@ -31,4 +31,6 @@ int pipe(int pipefd[2]);
 
 void pscmd(void);
 
+int access(const char *pathname);
+
 #endif

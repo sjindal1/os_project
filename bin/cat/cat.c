@@ -33,5 +33,5 @@ int main(int argc, char *argv[], char *envp[]) {
 			printf("%s size - %d\n", filecontent, read_count);
 		}
 	}
-	close(fd);
+	//close(fd);
 }

@@ -19,6 +19,7 @@ uint64_t _syswaitpid(syscall_params *params);
 uint64_t _sysopen(syscall_params *params);
 uint64_t _sysclose(syscall_params *params);
 uint64_t _sysps(syscall_params *params);
+uint64_t _sys_access(syscall_params *params);
 
 void switch_to_ring3(uint64_t *, uint64_t);
 
@@ -53,6 +54,7 @@ void init_syscalls(){
   sysfunc[1] = &_syswrite;
   sysfunc[2] = &_sysopen;
   sysfunc[3] = &_sysclose;
+  sysfunc[21] = &_sys_access;
   sysfunc[57] = &_sysfork;
   sysfunc[59] = &_sysexec;
   sysfunc[60] = &_sysexit;
@@ -127,6 +129,12 @@ uint64_t _sysopen(syscall_params *params){
   uint8_t *filename = (uint8_t *)params->p1;
   filename++; // tarfs starts from bin and not /bin so removing one character
   return _vfsopen(filename);
+}
+
+uint64_t _sys_access(syscall_params *params){
+  uint8_t *filename = (uint8_t *)params->p1;
+  filename++; // tarfs starts from bin and not /bin so removing one character
+  return _vfsexists(filename);
 }
 
 uint64_t _sysclose(syscall_params *params){
@@ -355,30 +363,32 @@ uint64_t _sysgetppid(syscall_params *params)
 
 uint64_t _sysps(syscall_params *params)
 {
-  uint16_t i;
-  uint8_t buf[50];
+ uint16_t i;
+ uint8_t buf[] = "4554445534";
 
-   _vfswrite(1, (uint8_t *)"PID   TTY   NAME   ", 13);
-  for(i = 0; i < MAX_PROC; i++)
-  {
-    if(pcb_struct[0].state != -1)
-    {
-      itoa(pcb_struct[0].pid, (uint8_t*)&buf[0]);
+  _vfswrite(1, (uint8_t *)"PID   TTY    NAME  \n", 20);
+ for(i = 0; i < MAX_PROC; i++)
+ {
+   if(pcb_struct[i].state != -1)
+   {
+     itoa(pcb_struct[i].pid, (uint8_t*)&buf[0]);
 
-      _vfswrite(1, (uint8_t*) buf, strlen(buf));
-      _vfswrite(1, (uint8_t*) "  TTY/0", 7);
+     _vfswrite(1, (uint8_t*) buf, strlen(buf));
+     _vfswrite(1, (uint8_t*) "     TTY/0", 11);
 
-      if(i == 0)
-        _vfswrite(1, (uint8_t*) "  Kernel", 8);
-      else if(i == 1)
-        _vfswrite(1, (uint8_t*) "  sbush", 7);
-      else if(i == current_process)
-        _vfswrite(1, (uint8_t*) "  ps", 2);
-      else
-        _vfswrite(1, (uint8_t*) "  Kthread", 9);
-    }
-  }
+     if(i == 0)
+       _vfswrite(1, (uint8_t*) "  Kernel", 9);
+     else if(i == 1)
+       _vfswrite(1, (uint8_t*) "  sbush", 8);
+     else if(i == current_process)
+       _vfswrite(1, (uint8_t*) "  ps", 5);
+     else
+       _vfswrite(1, (uint8_t*) "  Kthread", 10);
 
-  return 0;
+     _vfswrite(1, (uint8_t*) "\n", 1);
+   }
+ }
+
+ return 0;
 }
 

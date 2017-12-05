@@ -22,6 +22,15 @@ int16_t get_first_free_fd(){
 	}
 }
 
+int8_t _vfsexists(uint8_t *filename){
+	uint64_t fileaddr = _tarfsopen(filename);
+	if(fileaddr == 0){     //does not exist
+		return 0;
+	}else{                 //exist
+		return 1;
+	}
+}
+
 //returning the addr where the file located
 int16_t _vfsopen(uint8_t* filename)
 {

@@ -48,6 +48,8 @@ void clean_up(volatile pcb *last){
   //free kernel stack
   kfree(last->kstack);
 
+  pcb_struct[last->pid].state = -1;   // put it to exit state
+  
   pcb *parent = &pcb_struct[last->ppid];
 
   if(parent->wait_for_any_proc == 1){

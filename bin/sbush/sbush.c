@@ -112,19 +112,69 @@ void myexec(int no_of_arguments){
   execvpe(args[0],args,penv);
 }
 
+void print_pwd(){
+  int i = 0;
+  while(penv[i] != 0){
+    char *env_var = penv[i];
+    if(strStartsWith(env_var, (char *)"PWD=") == 0){
+      char path_parts[3][256];
+      strspt(env_var, path_parts, '=');
+      printf("%s\n", path_parts[1]);
+      break;
+    }
+    i++;
+  } 
+}
+
+
+int8_t check_command_exists(){
+  char *fileptr;
+
+  char *path = args[0];
+
+  char filename[256];
+
+  if(strStartsWith(path, (char *)"/") == 0){
+    fileptr = path;
+  }else{
+    int i = 0;
+    while(penv[i] != 0){
+      char *env_var = penv[i];
+      if(strStartsWith(env_var, (char *)"PATH=") == 0){
+        char path_parts[3][256];
+        strspt(env_var, path_parts, '=');
+        strconcat(path_parts[1], path, filename);
+        fileptr = (char *)filename;
+      }
+      i++;
+    } 
+  }
+
+  int result = access(fileptr);
+  return result;
+}
+
 void execute_commands(int no_of_arguments){
   if(strStartsWith(args[0], "echo") == 0){
     for(int i=1;i<no_of_arguments;i++){
       printf("%s ", args[i]);
     }
     printf("\n");
+  }else if(strStartsWith(args[0], "pwd") == 0){
+    print_pwd();
+  }else if(args[0][0] == '\0'){
+    return;
   }else{
-    int pid = fork();
-    if(pid == 0){
-      myexec(no_of_arguments);
-      exit(0);
+    if(check_command_exists() == 1){      
+      int pid = fork();
+      if(pid == 0){
+        myexec(no_of_arguments);
+        exit(0);
+      }else{
+        waitpid(pid, NULL);
+      }
     }else{
-      waitpid(pid, NULL);
+      printf("Invalid command\n");
     }
   }
 }

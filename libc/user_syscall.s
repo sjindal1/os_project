@@ -10,6 +10,7 @@
 .global open
 .global pscmd
 .global close
+.global access
 
 
 // cc - rdi, rsi, rdx, rcx, r8, r9
@@ -78,6 +79,11 @@ pscmd:
 
 close:
 	movq $3, %rax;
+	syscall;
+	retq;
+
+access:
+	movq $21, %rax;
 	syscall;
 	retq;
 
