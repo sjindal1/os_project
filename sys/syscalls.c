@@ -17,6 +17,7 @@ uint64_t _sysgetpid(syscall_params *params);
 uint64_t _sysgetppid(syscall_params *params);
 uint64_t _syswaitpid(syscall_params *params);
 uint64_t _sysopen(syscall_params *params);
+uint64_t _sysclose(syscall_params *params);
 uint64_t _sysps(syscall_params *params);
 
 void switch_to_ring3(uint64_t *, uint64_t);
@@ -51,6 +52,7 @@ void init_syscalls(){
   sysfunc[0] = &_sysread;
   sysfunc[1] = &_syswrite;
   sysfunc[2] = &_sysopen;
+  sysfunc[3] = &_sysclose;
   sysfunc[57] = &_sysfork;
   sysfunc[59] = &_sysexec;
   sysfunc[60] = &_sysexit;
@@ -125,6 +127,21 @@ uint64_t _sysopen(syscall_params *params){
   uint8_t *filename = (uint8_t *)params->p1;
   filename++; // tarfs starts from bin and not /bin so removing one character
   return _vfsopen(filename);
+}
+
+uint64_t _sysclose(syscall_params *params){
+  uint32_t fd = (uint32_t)params->p1;
+  if(fd == -1){
+    return -1;
+  }else{
+    pcb_struct[current_process].mfdes[fd].status = 1;
+    pcb_struct[current_process].mfdes[fd].type = TARFS;
+    pcb_struct[current_process].mfdes[fd].addr = 0;
+    pcb_struct[current_process].mfdes[fd].offset = 0;
+    pcb_struct[current_process].mfdes[fd].permissions = 0xff;
+    pcb_struct[current_process].elf_start = 0;
+  }
+  return 0;
 }
 
 uint64_t _syswrite(syscall_params *params){

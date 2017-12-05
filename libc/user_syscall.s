@@ -8,6 +8,7 @@
 .global waitpid
 .global exit
 .global open
+.global pscmd
 
 // cc - rdi, rsi, rdx, rcx, r8, r9
 // stdin - rdi
@@ -67,3 +68,9 @@ open:
 	movq $2, %rax;
 	syscall;
 	retq;
+
+pscmd:
+	movq $10, %rax;
+	syscall;
+	retq;
+
