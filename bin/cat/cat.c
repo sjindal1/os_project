@@ -16,6 +16,9 @@ int main(int argc, char *argv[], char *envp[]) {
       if(strStartsWith(env_var, (char *)"PWD=") == 0){
         char path_parts[3][256];
         strspt(env_var, path_parts, '=');
+        int len = strlen(path_parts[1]);
+        path_parts[1][len] = '/';
+        path_parts[1][len + 1] = '\0';
         strconcat(path_parts[1], argv[1], filename);
         filepath = filename;
       }

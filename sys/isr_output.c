@@ -28,6 +28,19 @@ void timer_print()
   return;
 }
 
+void premptive_switch()
+{
+  static int yield_call = 100;
+
+  if(yield_call == 0){
+    yield();
+    yield_call = 100;
+  }else{
+    yield_call--;
+  }
+  return;
+}
+
 void int_print()
 {
   kprintf("interrupt occurs");

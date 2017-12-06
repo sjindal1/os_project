@@ -287,6 +287,121 @@ void execute_commands(int no_of_arguments){
   }
 }
 
+
+
+int executescript(int no_of_arguments)
+{
+  //return 0;     // 0 - not a script
+
+  char *filepath; 
+  char filename[100], cwd[100];
+
+  char data[256], ch;
+  int len = 0, i = 0;
+
+  if(no_of_arguments > 1)
+    return 0;
+
+  if(strStartsWith(args[0], "/") == 0){ //absolute path
+    filepath = args[0];
+  }else{                           //relative path
+    getcwd((char *)&cwd[0], 0);
+    strconcat(cwd, args[0], filename);
+    filepath = filename;
+  }
+
+  int fd = open(filepath, 0);
+  if(fd < 0)
+  {
+    //printf("Script: File not found\n");
+    close(fd);
+    return 0;
+  }
+
+  len = read(fd, data, 2);
+  if(len == 0) {
+    close(fd);
+    return 0;
+  }
+
+  if(data[0] == '!' && data[1] == '#')
+  {
+    // it is a script
+    len = read(fd, (char *) &ch, 1);
+    if(len == 0) { close(fd); return 1; }      // bad script
+
+    i = 0;
+    while(ch != '\n')
+    {
+      data[i++] = ch;
+      // capture data and check for  /bin/sbush
+      len = read(fd, (char *) &ch, 1);
+        if(len == 0) { close(fd); return 1; }      // bad script
+    }
+    data[i] = '\0';
+    if(strcmp(data, " /bin/sbush") != 0)
+    {
+      printf("Script:Invalid sbush path\n");
+      close(fd);
+      return 1;
+    }
+
+    len = read(fd, (char *) &ch, 1);
+        if(len == 0) { close(fd); return 1; }      // bad script   
+    while(ch != '\n')
+    {
+      // blank line is mandatory
+      len = read(fd, (char *) &ch, 1);
+        if(len == 0) { close(fd); return 1; }      // bad script
+    }
+
+    i = 0;
+    while(read(fd, (char *) &ch, 1) != 0)
+    {
+      if(ch != '\n')
+      {
+        data[i++] = ch;
+      }
+      else
+      {
+        // execute the command
+        data[i] = '\0';
+        i = 0;
+
+        int arguments = strspt(data, input_args, ' ');
+        for(int arg_no = 0; arg_no < arguments; arg_no++){
+          args[arg_no] = input_args[arg_no];
+          //printf("%s\n", args[arg_no]);
+        }
+        args[arguments] = NULL;
+
+        execute_commands(arguments);
+      }
+    }
+
+    if(i != 0)
+    {
+      // execute the command
+      data[i] = '\0';
+      i = 0;
+
+      int arguments = strspt(data, input_args, ' ');
+      for(int arg_no = 0; arg_no < arguments; arg_no++){
+        args[arg_no] = input_args[arg_no];
+        //printf("%s\n", args[arg_no]);
+      }
+      args[arguments] = NULL;
+
+      execute_commands(arguments);
+    }
+  }
+
+  close(fd);
+  return 1;
+}
+
+
+
 int main(int argc, char *argv[], char *envp[]) {
 	int err;
 	settheenviron(envp);
@@ -304,7 +419,9 @@ int main(int argc, char *argv[], char *envp[]) {
 	  }
     args[no_of_arguments] = NULL;
 
-    execute_commands(no_of_arguments);
+    err = executescript(no_of_arguments);
+    if(err == 0)
+      execute_commands(no_of_arguments);
 		//I have to call read now
 		//while(1);
 	}
