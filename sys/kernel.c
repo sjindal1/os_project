@@ -169,6 +169,7 @@ void create_kernel_thread(uint64_t* func_ptr){
   no_of_task++;
 }
 
+#if 0
 void create_pcb_stack(uint64_t *user_cr3,uint64_t va_func){
 	//Kernel Thread 1 PCB
   pcb_struct[free_pcb].pid = free_pcb;
@@ -213,6 +214,7 @@ void create_pcb_stack(uint64_t *user_cr3,uint64_t va_func){
   free_pcb++;
   no_of_task++;
 }
+#endif
 
 uint64_t get_pt_va_add(uint64_t v_add){
   uint32_t va_pml4_off = get_pml4(v_add);
