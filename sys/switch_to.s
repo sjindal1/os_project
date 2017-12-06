@@ -106,7 +106,7 @@ switch_out:
 	retq;
 
 switch_to_ring3:
-	//cli;
+	cli;
 	mov $0x23, %ax;  
 	mov %ax, %ds; 
 	mov %ax, %es;  

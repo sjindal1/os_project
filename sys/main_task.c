@@ -51,6 +51,7 @@ void main_task(){
     kprintf("returning to main thread\n");
 	//}  
 
+
 	return;
 }
 
@@ -144,11 +145,11 @@ void user_ring3_process() {
 }
 
 void save_rsp(){
-  uint64_t rsp;
-  __asm__ __volatile__ ("movq %%rsp, %0" : "=m"(rsp) : : );
-  rsp = rsp & 0xFFFFFFFFFFFFF000;
-  rsp = rsp + 0xff8;
-  set_tss_rsp((void *)rsp);
+  //uint64_t rsp;
+  //__asm__ __volatile__ ("movq %%rsp, %0" : "=m"(rsp) : : );
+  //rsp = rsp & 0xFFFFFFFFFFFFF000;
+  //rsp = rsp + 0xff8;
+  //set_tss_rsp((void *)rsp);
   /*uint64_t *rsp = pcb_struct[current_process].kstack;
   set_tss_rsp((void *)rsp);*/
   uint64_t curr_proc_pcb = (uint64_t)&pcb_struct[current_process];
@@ -225,10 +226,13 @@ void kernel_1_thread(){
   stackadd = copy_argv(args_block + 0x800, (uint64_t *)stackadd, argvuser);
 
   //switching to ring 3
-  /*uint64_t stack = (uint64_t)kmalloc(4096);
-  kprintf("stack - %x\n", stack);
-  stack+= 4088;*/
+  uint64_t tss_stack = (uint64_t)kmalloc(4096);
+  //kprintf("stack - %x\n", stack);
+  tss_stack+= 4088;
+  set_tss_rsp((void *)tss_stack);
+   
   save_rsp();
+
   //switch_to_ring3((uint64_t *)&user_ring3_process, stack);
   switch_to_ring3((uint64_t *)pcb_struct[current_process]._start_addr, stackadd);
   
