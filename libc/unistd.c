@@ -12,3 +12,8 @@ unsigned int sleep(unsigned int seconds){
   }
   return time;
 }
+
+pid_t wait(int *status)
+{
+	return waitpid(-1, status);
+}
