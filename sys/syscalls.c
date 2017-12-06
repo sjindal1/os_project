@@ -104,7 +104,7 @@ uint64_t kernel_syscall()
 
   if(params->sysnum == 57)
   {
-    uint32_t childproc = retval;
+    uint32_t childproc = retval - 1;
 		//make a copy of the parent stack
  		uint64_t *parent_stack = pcb_struct[current_process].kstack;
 		uint64_t *child_stack = pcb_struct[childproc].kstack;
@@ -324,11 +324,11 @@ void update_free_pcb(){
 uint64_t _sysfork(syscall_params *params){
 	create_pcb_copy();
   pcb_struct[current_process].my_child[free_pcb] = 1;
-	//free_pcb++;
-  int child_pid = free_pcb;
-	update_free_pcb();
+  int child_pid = free_pcb + 1;
+  //free_pcb++;
+  update_free_pcb();
   no_of_task++;
-	return child_pid;
+  return child_pid; 
 }
 
 uint64_t _sysexec(syscall_params *params){
