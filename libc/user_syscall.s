@@ -15,7 +15,7 @@
 .global opendir
 .global closedir
 .global startproc
-
+.global kill
 
 // cc - rdi, rsi, rdx, rcx, r8, r9
 // stdin - rdi
@@ -108,5 +108,10 @@ closedir:
 
 startproc:
 	movq $199, %rax;
+	syscall;
+	retq;
+
+kill:
+	movq $62, %rax;
 	syscall;
 	retq;

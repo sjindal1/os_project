@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <signal.h>
 #include <stdlib.h>
 
 char myenv[10][256];
@@ -104,8 +105,6 @@ void display_prompt()
 
   return;
 }
-
-char *ls_args[3] = {"cat", "bin/sahil.txt"};
 
 void myexec(int no_of_arguments){
   //ls_args[2] = NULL;
@@ -211,6 +210,34 @@ int8_t check_command_exists(char *path){
   return result;
 }
 
+int get_int_val(char * str){
+  int len = strlen(str);
+  int result = 0, i=1;
+  len--;
+  result = (str[len--]%48);
+  while(len >= 0){
+    result += (str[len]%48)*(i*10);
+    len--;
+    i++;
+  }
+  return result;
+}
+
+void call_kill(int no_of_arguments){
+  if(no_of_arguments != 3){
+    printf("invalid command\n");
+  }else{
+    int sig = get_int_val((char *)&args[1][1]);
+    pid_t pid = (pid_t) get_int_val(args[2]);
+    int status = kill(pid, sig);
+    if(status == 0){
+      printf("killed process %d", (int)pid);
+    }else{
+      printf("invalid pid\n");
+    }
+  }
+}
+
 void execute_commands(int no_of_arguments){
   if(no_of_arguments == 0){
     return;
@@ -226,6 +253,10 @@ void execute_commands(int no_of_arguments){
     if(result == 0){
       printf("invalid directory\n");
     }
+  }else if(strcmp(args[0], "exit") == 0){
+    exit(0);
+  }else if(strStartsWith(args[0], "kill") == 0){
+    call_kill(no_of_arguments);
   }else{
     if(check_command_exists(args[0]) == 1){      
       int pid = fork();
@@ -236,7 +267,7 @@ void execute_commands(int no_of_arguments){
         waitpid(pid, NULL);
       }
     }else{
-      printf("Invalid command\n");
+      printf("invalid command\n");
     }
   }
 }
@@ -245,6 +276,7 @@ int main(int argc, char *argv[], char *envp[]) {
 	int err;
 	settheenviron(envp);
 	char input_buf[256];
+  printf("Welcome to SBUIX\n");
 	while(1)
 	{
 		display_prompt();

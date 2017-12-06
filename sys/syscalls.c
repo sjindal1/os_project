@@ -24,7 +24,7 @@ uint64_t _sysopendir(syscall_params *params);
 uint64_t _sysreaddir(syscall_params *params);
 uint64_t _sysclosedir(syscall_params *params);
 uint64_t _sysstartproc(syscall_params *params);
-
+uint64_t _syskill(syscall_params *params);
 
 
 void switch_to_ring3(uint64_t *, uint64_t);
@@ -65,6 +65,7 @@ void init_syscalls(){
   sysfunc[59] = &_sysexec;
   sysfunc[60] = &_sysexit;
   sysfunc[61] = &_syswaitpid;
+  sysfunc[62] = &_syskill;
 
   sysfunc[77] = &_sysopendir;
   sysfunc[78] = &_sysreaddir;
@@ -215,8 +216,18 @@ uint64_t _sysread(syscall_params *params){
 	return _vfsread(params->p1, (uint8_t *)params->p2, params->p3);;
 }
 
-//TODO
-//Call yield and clean this process up after the yield.
+uint64_t _syskill(syscall_params *params){
+  uint64_t pid = params->p1;
+  if(pcb_struct[pid].state != -1 && pid != 1){ // is a running process;
+    pcb_struct[pid].exit_status = params->p2;
+    pcb_struct[pid].state = 3;
+    return 0;
+  }
+  
+  return 1; // no process to kill
+}
+
+
 uint64_t _sysexit(syscall_params *params){
 	pcb_struct[current_process].exit_status = params->p1;
   pcb_struct[current_process].state = 3;
@@ -408,7 +419,7 @@ uint64_t _sysps(syscall_params *params)
  uint8_t buf[] = "4554445534";
 
   _vfswrite(1, (uint8_t *)"PID   TTY    NAME  \n", 20);
- for(i = 0; i < MAX_PROC; i++)
+ for(i = 1; i < MAX_PROC; i++)
  {
    if(pcb_struct[i].state != -1)
    {
@@ -417,10 +428,11 @@ uint64_t _sysps(syscall_params *params)
      _vfswrite(1, (uint8_t*) buf, strlen(buf));
      _vfswrite(1, (uint8_t*) "     TTY/0", 11);
 
-     if(i == 0)
-       _vfswrite(1, (uint8_t*) "  Kernel", 9);
-     else if(i == 1)
+     if(i == 1)
+       _vfswrite(1, (uint8_t*) "  init", 8);
+     else if(i == pcb_struct[current_process].ppid){
        _vfswrite(1, (uint8_t*) "  sbush", 8);
+     }
      else if(i == current_process)
        _vfswrite(1, (uint8_t*) "  ps", 5);
      else
