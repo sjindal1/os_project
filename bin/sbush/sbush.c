@@ -212,7 +212,9 @@ int8_t check_command_exists(char *path){
 }
 
 void execute_commands(int no_of_arguments){
-  if(strStartsWith(args[0], "echo") == 0){
+  if(no_of_arguments == 0){
+    return;
+  }if(strStartsWith(args[0], "echo") == 0){
     for(int i=1;i<no_of_arguments;i++){
       printf("%s ", args[i]);
     }
@@ -224,8 +226,6 @@ void execute_commands(int no_of_arguments){
     if(result == 0){
       printf("invalid directory\n");
     }
-  }else if(args[0][0] == '\0'){
-    return;
   }else{
     if(check_command_exists(args[0]) == 1){      
       int pid = fork();

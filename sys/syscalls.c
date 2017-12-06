@@ -23,6 +23,7 @@ uint64_t _sys_access(syscall_params *params);
 uint64_t _sysopendir(syscall_params *params);
 uint64_t _sysreaddir(syscall_params *params);
 uint64_t _sysclosedir(syscall_params *params);
+uint64_t _sysstartproc(syscall_params *params);
 
 
 
@@ -74,6 +75,8 @@ void init_syscalls(){
 
   // Our OS functionalities
   sysfunc[10] = &_sysps;
+  sysfunc[199] = &_sysstartproc;
+
 
   // kprintf("efer ->%x, star -> %x, lstar -> %x, cstar -> %x, sfmask -> %x\n", efer, star, lstar, cstar, sfmask);
 }
@@ -124,6 +127,7 @@ uint64_t kernel_syscall()
     /*volatile uint64_t *p_stack = pcb_struct[current_process].kstack;
     retval = p_stack[511];*/
     //kprintf("retval %d\n", retval);
+    yield();
     return retval;
     //return pcb_struct[current_process].kstack[511];
 	}else{
@@ -133,6 +137,10 @@ uint64_t kernel_syscall()
 	kfree((uint64_t *)params);
 
 	return retval;
+}
+
+uint64_t _sysstartproc(syscall_params *params){
+  return 0;
 }
 
 uint64_t _sysopen(syscall_params *params){

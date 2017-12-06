@@ -14,6 +14,7 @@
 .global readdir
 .global opendir
 .global closedir
+.global startproc
 
 
 // cc - rdi, rsi, rdx, rcx, r8, r9
@@ -105,3 +106,7 @@ closedir:
 	syscall;
 	retq;
 
+startproc:
+	movq $199, %rax;
+	syscall;
+	retq;
