@@ -238,6 +238,50 @@ void call_kill(int no_of_arguments){
   }
 }
 
+int bg = 1;
+
+void checkforbackground(int no_of_arguments)
+{
+  int i = 0;
+
+  bg = 1;
+
+  if(no_of_arguments == 1)
+  {
+    int len = strlen(args[0]);
+
+    if(args[0][len - 1] == '&')
+    {
+      bg = 2;
+      args[0][len - 1] = '\0';
+    }
+  }
+  else
+  {
+    for(i = 0; ; i++)
+    {
+      if(args[i][0] == '\0')
+        break;
+
+      if((args[i][0] == '&') && (args[i][1] == '\0'))
+      {
+        bg = 2;
+        break;
+      }
+    }
+
+    if(bg == 2)        // it is background remove the & from cmd buffer and update pointers
+    {
+      ///args[i][0] = '\0';
+     //pcmd[i] = NULL;
+      args[i] = NULL;
+    }
+  }
+
+  return;
+}
+
+
 void execute_commands(int no_of_arguments){
   if(no_of_arguments == 0){
     return;
@@ -257,14 +301,19 @@ void execute_commands(int no_of_arguments){
     exit(0);
   }else if(strStartsWith(args[0], "kill") == 0){
     call_kill(no_of_arguments);
-  }else{
-    if(check_command_exists(args[0]) == 1){      
+  }
+  else
+  {
+    checkforbackground(no_of_arguments); 
+    if(check_command_exists(args[0]) == 1){
       int pid = fork();
       if(pid == 0){
         myexec(no_of_arguments);
         exit(0);
       }else{
-        waitpid(pid, NULL);
+        if(bg == 1)
+          waitpid(pid, NULL);
+        bg = 1;
       }
     }else{
       printf("invalid command\n");
