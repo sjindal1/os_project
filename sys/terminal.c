@@ -208,8 +208,10 @@ void _termupdatecmdbuf(char str)
 	return;
 }
 
+uint8_t term_shift_pressed = 0, term_ctrl_pressed = 0;
+
 void _term_keypress_handle(){
-	uint8_t shift_pressed = 0, ctrl_pressed = 0;
+	
 	unsigned char scan_code;
 	__asm__ __volatile__ ("inb $0x60, %%al\n\t"
 	                       "movb %%al, %0"
@@ -220,14 +222,14 @@ void _term_keypress_handle(){
 	str[1] ='\0';
 	if(scan_code < 129){
 	   if(scan_code == 42 || scan_code == 54){
-	     shift_pressed = 1;
+	     term_shift_pressed = 1;
 	   } 
 	   else if(scan_code == 29){
-	     ctrl_pressed = 1;
+	     term_shift_pressed = 1;
 	   }else{
-	     if(shift_pressed == 1){
+	     if(term_shift_pressed == 1){
 	       str[0] =  ps2_ascii_shift_mappings[scan_code];
-	     }else if(ctrl_pressed == 1){
+	     }else if(term_shift_pressed == 1){
 	       str[0] =  ps2_ascii_mapping[scan_code];
 	     }
 	     else{
@@ -238,10 +240,10 @@ void _term_keypress_handle(){
 	   }
 	 }else{
 	   if(scan_code == 170 || scan_code == 182){
-	     shift_pressed = 0;
+	     term_shift_pressed = 0;
 	   } 
 	   else if(scan_code == 157){
-	     ctrl_pressed = 0;
+	     term_shift_pressed = 0;
 	   }
 	 }
 }
