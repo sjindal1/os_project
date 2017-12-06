@@ -207,6 +207,7 @@ uint64_t _sysclose(syscall_params *params){
     pcb_struct[current_process].mfdes[fd].addr = 0;
     pcb_struct[current_process].mfdes[fd].offset = 0;
     pcb_struct[current_process].mfdes[fd].permissions = 0;
+    pcb_struct[current_process].mfdes[fd].size = 0;
     pcb_struct[current_process].elf_start = 0;
   }
   return 0;
@@ -275,6 +276,7 @@ void create_pcb_copy(){
   	pcb_struct[free_pcb].mfdes[i].offset = pcb_struct[current_process].mfdes[i].offset;
   	pcb_struct[free_pcb].mfdes[i].status = pcb_struct[current_process].mfdes[i].status;
   	pcb_struct[free_pcb].mfdes[i].permissions = pcb_struct[current_process].mfdes[i].permissions;
+  	pcb_struct[free_pcb].mfdes[i].size = pcb_struct[current_process].mfdes[i].size;
   }
 
   for(int i=0 ; i<32;i++){

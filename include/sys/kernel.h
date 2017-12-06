@@ -24,6 +24,7 @@ struct filedes{
 	uint64_t offset;
 	uint8_t status;
 	uint8_t permissions;
+  uint32_t size;
 };
 
 struct pcb

@@ -23,7 +23,8 @@ int16_t get_first_free_fd(){
 }
 
 int8_t _vfsexists(uint8_t *filename){
-	uint64_t fileaddr = _tarfsopen(filename);
+	uint32_t size;
+	uint64_t fileaddr = _tarfsopen(filename, &size);
 	if(fileaddr == 0){     //does not exist
 		return 0;
 	}else{                 //exist
@@ -34,7 +35,8 @@ int8_t _vfsexists(uint8_t *filename){
 //returning the addr where the file located
 int16_t _vfsopen(uint8_t* filename)
 {
-	uint64_t fileaddr = _tarfsopen(filename);
+	uint32_t filesize = 0;
+	uint64_t fileaddr = _tarfsopen(filename, &filesize);
 	if(fileaddr == 0){
 		return -1;
 	}
@@ -48,6 +50,7 @@ int16_t _vfsopen(uint8_t* filename)
 		pcb_struct[current_process].mfdes[fd].addr = fileaddr;
 		pcb_struct[current_process].mfdes[fd].offset = 0;
 		pcb_struct[current_process].mfdes[fd].permissions = 0xff;
+		pcb_struct[current_process].mfdes[fd].size = filesize;
 		pcb_struct[current_process].elf_start = fileaddr;
 	} 
 	return fd;
@@ -70,7 +73,20 @@ uint32_t _vfsread(int16_t fd, uint8_t *buffer, uint16_t size)
 	else if(fdtype == TARFS)
 	{
 		//kprintf("vfs offsets read %x \n", pcb_struct[current_process].mfdes[fd].offset);
-		uint64_t start_add = pcb_struct[current_process].mfdes[fd].addr + pcb_struct[current_process].mfdes[fd].offset;
+		uint64_t start_add = pcb_struct[current_process].mfdes[fd].addr;
+		uint32_t fsize = pcb_struct[current_process].mfdes[fd].size;
+		uint32_t offset = pcb_struct[current_process].mfdes[fd].offset;
+
+		uint32_t rem_size = fsize - offset;
+
+		if(rem_size <= 0)
+			return 0;
+
+		if(rem_size < size)
+			size = rem_size;
+
+		start_add = start_add + offset;
+
 		retvalue = _tarfs_read(start_add, (uint8_t *)buffer, size);
 		pcb_struct[current_process].mfdes[fd].offset += retvalue;	
 	}

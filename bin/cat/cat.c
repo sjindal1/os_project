@@ -25,13 +25,16 @@ int main(int argc, char *argv[], char *envp[]) {
 	int fd = open(filepath, 0);
 	//printf("%s fd - %d\n", filepath, fd);
 	if(fd == -1){
-		printf("file does not exist please check the filename\n");
+		printf("cat: %s: file does not exist or it is a directory\n", filepath);
 	}else{
 		char filecontent[256];
-		int read_count = read(fd, filecontent, 256);
-		if(read_count > 0){
-			printf("%s size - %d\n", filecontent, read_count);
+		int read_count = read(fd, filecontent, 2);
+		while(read_count == 2)
+		{
+			write(1, filecontent, read_count);
+			read_count = read(fd, filecontent, 2);
 		}
+		write(1, filecontent, read_count);
 	}
-	//close(fd);
+	close(fd);
 }
