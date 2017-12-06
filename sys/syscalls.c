@@ -20,6 +20,7 @@ uint64_t _sysopen(syscall_params *params);
 uint64_t _sysclose(syscall_params *params);
 uint64_t _sysps(syscall_params *params);
 uint64_t _sys_access(syscall_params *params);
+uint64_t _sysbrk(syscall_params *params);
 
 void switch_to_ring3(uint64_t *, uint64_t);
 
@@ -61,6 +62,7 @@ void init_syscalls(){
   sysfunc[61] = &_syswaitpid;
   sysfunc[39] = &_sysgetpid;
   sysfunc[110] = &_sysgetppid;
+  sysfunc[12] = &_sysbrk;
 
   // Our OS functionalities
   sysfunc[10] = &_sysps;
@@ -194,6 +196,9 @@ void create_pcb_copy(){
   pcb_struct[free_pcb].numvma = pcb_struct[current_process].numvma;
   pcb_struct[free_pcb].elf_start = pcb_struct[current_process].elf_start;
   pcb_struct[free_pcb].ppid = current_process;
+
+  // child will not inherit the heap of the parent.
+  pcb_struct[free_pcb].heap_allocated = 0;
 
   for(int i=0 ; i<16;i++){
   	pcb_struct[free_pcb].mfdes[i].type = pcb_struct[current_process].mfdes[i].type;
@@ -390,5 +395,26 @@ uint64_t _sysps(syscall_params *params)
  }
 
  return 0;
+}
+
+
+uint64_t _sysbrk(syscall_params *params)
+{
+	int ivmaheap = pcb_struct[current_process].heap_allocated;
+
+	// return a 100 MB allocation 1 time only, no increase later
+	if(pcb_struct[current_process].heap_allocated)
+		return pcb_struct[current_process].vma[ivmaheap].startva;
+
+	pcb_struct[current_process].heap_allocated = pcb_struct[current_process].numvma;
+	pcb_struct[current_process].vma[ivmaheap].startva = USER_HEAP_START;
+	pcb_struct[current_process].vma[ivmaheap].size = USER_HEAP_SIZE;
+	pcb_struct[current_process].vma[ivmaheap].next = NULL;
+	pcb_struct[current_process].vma[ivmaheap].offset_fs = 0;
+	pcb_struct[current_process].vma[ivmaheap].permissions = 0xff;
+
+	pcb_struct[current_process].numvma++;
+
+	return USER_HEAP_START;
 }
 

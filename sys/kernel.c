@@ -49,6 +49,7 @@ void clean_up(volatile pcb *last){
   kfree(last->kstack);
 
   pcb_struct[last->pid].state = -1;   // put it to exit state
+  pcb_struct[last->pid].heap_allocated = 0;
   
   pcb *parent = &pcb_struct[last->ppid];
 
@@ -127,6 +128,7 @@ void create_kernel_thread(uint64_t* func_ptr){
   pcb_struct[free_pcb].ppid = current_process;
   pcb_struct[free_pcb].cr3 = (uint64_t)kernel_cr3;
   pcb_struct[free_pcb].state = 0;
+  pcb_struct[free_pcb].heap_allocated = 0;
   pcb_struct[free_pcb].exit_status = -1;
   pcb_struct[free_pcb].kstack = kmalloc(4096);
   pcb_struct[free_pcb].rsp = (uint64_t)(pcb_struct[free_pcb].kstack) + 0xF80;
@@ -175,6 +177,7 @@ void create_pcb_stack(uint64_t *user_cr3,uint64_t va_func){
   pcb_struct[free_pcb].ppid = current_process;
   pcb_struct[free_pcb].cr3 = (uint64_t)user_cr3;
   pcb_struct[free_pcb].state = 0;
+  pcb_struct[free_pcb].heap_allocated = 0;
   pcb_struct[free_pcb].exit_status = -1;
   pcb_struct[free_pcb].kstack = kmalloc(4096);
   pcb_struct[free_pcb].rsp = (uint64_t)(pcb_struct[free_pcb].kstack) + 0xF80;
@@ -272,6 +275,7 @@ void page_fault_handle(){
         uint64_t *pt_va = (uint64_t *)get_pt_va_add((uint64_t)va_start);
         uint64_t pt_p_add = pt_va[pt_off];
 
+
         if(pt_p_add != 0x2 && (pt_p_add & 0x800) == 0x800){ //COW entry
 
           uint64_t page_index = (uint64_t)pt_p_add/4096;
@@ -290,6 +294,16 @@ void page_fault_handle(){
             pt_va[pt_off] = (uint64_t)p_add | USERPAG; 
           }
         }
+        else      // vma entry exist and heap segment
+        {
+          uint64_t *papage = get_free_page();
+          create_pf_pt_entry(papage, (uint64_t)va_start);
+
+          pt_va = (uint64_t *)get_pt_va_add((uint64_t)va_start);
+
+          pt_va[pt_off] = (uint64_t) papage | USERPAG;
+        }
+
       }else{
         uint64_t *p_add = get_free_page();
         create_pf_pt_entry(p_add, (uint64_t)va_start);

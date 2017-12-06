@@ -48,6 +48,11 @@ void mprint(int err)
 	;
 }
 
+void mpprint(int * p)\
+{
+  ;
+}
+
 void retps1pwd(char **b, int *pwd, char **strpwd)
 {
   int i, j;
@@ -83,12 +88,15 @@ void retps1pwd(char **b, int *pwd, char **strpwd)
   return;
 }
 
+int malflag = 1;
+
 void display_prompt()
 {
   char *buf = NULL;//, *buf1 = NULL;
   int pwd, err;
   char *pwdstr = NULL;
   retps1pwd(&buf, &pwd, &pwdstr);
+  int *ptr = NULL;
 
   if(pwd)
   {
@@ -100,7 +108,12 @@ void display_prompt()
     err = write(1, buf, strlen(buf));
 
   err = write(1, "> ", 2);
+
+  if(malflag == 1)
+    ptr = (int*) malloc(10);
+
   mprint(err);
+  mpprint(ptr);
 
   return;
 }
