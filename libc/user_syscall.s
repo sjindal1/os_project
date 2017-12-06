@@ -17,6 +17,9 @@
 .global startproc
 .global kill
 .global sys_sleep
+.global getcwd
+.global chdir
+.global clearscr
 
 // cc - rdi, rsi, rdx, rcx, r8, r9
 // stdin - rdi
@@ -93,17 +96,17 @@ access:
 	retq;
 
 opendir:
-	movq $77, %rax;
+	movq $177, %rax;
 	syscall;
 	retq;
 
 readdir:
-	movq $78, %rax;
+	movq $178, %rax;
 	syscall;
 	retq;
 
 closedir:
-	movq $79, %rax;
+	movq $179, %rax;
 	syscall;
 	retq;
 
@@ -119,5 +122,20 @@ kill:
 
 sys_sleep:
 	movq $198, %rax;
+	syscall;
+	retq;
+
+chdir:
+	movq $80, %rax;
+	syscall;
+	retq;
+
+getcwd:
+	movq $79, %rax;
+	syscall;
+	retq;
+
+clearscr:
+	movq $197, %rax;
 	syscall;
 	retq;

@@ -46,6 +46,7 @@ struct pcb
   uint8_t my_child[MAX_PROC];
   uint8_t wait_child[MAX_PROC];
   uint8_t wait_for_any_proc;
+  uint8_t cwd[256];
 };
 
 extern pcb pcb_struct[];

@@ -6,6 +6,7 @@
 #include <sys/elf64.h>
 #include <sys/utils.h>
 #include <sys/tarfs.h>
+#include <sys/terminal.h>
 #include <sys/syscalls.h>
 
 extern uint64_t time;
@@ -28,6 +29,10 @@ uint64_t _sysclosedir(syscall_params *params);
 uint64_t _sysstartproc(syscall_params *params);
 uint64_t _syskill(syscall_params *params);
 uint64_t _syssleep(syscall_params *params);
+uint64_t _syschdir(syscall_params *params);
+uint64_t _sysgetcwd(syscall_params *params);
+uint64_t _sysclear(syscall_params *params);
+
 
 void switch_to_ring3(uint64_t *, uint64_t);
 
@@ -69,15 +74,19 @@ void init_syscalls(){
   sysfunc[61] = &_syswaitpid;
   sysfunc[62] = &_syskill;
 
-  sysfunc[77] = &_sysopendir;
-  sysfunc[78] = &_sysreaddir;
-  sysfunc[79] = &_sysclosedir;
+  
+  sysfunc[79] = &_sysgetcwd;
+  sysfunc[80] = &_syschdir;
 
   sysfunc[39] = &_sysgetpid;
   sysfunc[110] = &_sysgetppid;
 
   // Our OS functionalities
   sysfunc[10] = &_sysps;
+  sysfunc[177] = &_sysopendir;
+  sysfunc[178] = &_sysreaddir;
+  sysfunc[179] = &_sysclosedir;
+  sysfunc[197] = &_sysclear;
   sysfunc[198] = &_syssleep;
   sysfunc[199] = &_sysstartproc;
 
@@ -144,6 +153,7 @@ uint64_t kernel_syscall()
 }
 
 uint64_t _sysstartproc(syscall_params *params){
+  __asm__ __volatile__ ("sti\n\t");
   return 0;
 }
 
@@ -164,6 +174,11 @@ uint64_t _sysopendir(syscall_params *params){
 }
 
 uint64_t _sysclosedir(syscall_params *params){  
+  return 0;
+}
+
+uint64_t _sysclear(syscall_params *params){  
+  _termclear();
   return 0;
 }
 
@@ -268,6 +283,12 @@ void create_pcb_copy(){
   	pcb_struct[free_pcb].vma[i].next = pcb_struct[current_process].vma[i].next;
   	pcb_struct[free_pcb].vma[i].offset_fs = pcb_struct[current_process].vma[i].offset_fs;
   	pcb_struct[free_pcb].vma[i].permissions = pcb_struct[current_process].vma[i].permissions;
+  }
+
+  int cwd_index = 0;
+  while(pcb_struct[current_process].cwd[cwd_index] != '\0'){
+    pcb_struct[free_pcb].cwd[cwd_index] = pcb_struct[current_process].cwd[cwd_index];
+    cwd_index++;
   }
 
   pcb_struct[free_pcb].vma_stack.startva = pcb_struct[current_process].vma_stack.startva;
@@ -471,3 +492,61 @@ uint64_t _sysps(syscall_params *params)
  return 0;
 }
 
+uint64_t _syschdir(syscall_params *params){
+  uint8_t *path = (uint8_t *)params->p1;
+
+  if(strcmp((uint8_t *)path, (uint8_t *)"..") == 0){
+    if(strcmp((uint8_t *)pcb_struct[current_process].cwd, (uint8_t *)"/") == 0){
+      return -1;
+    }else{      
+      int lastchar_path = strlen(pcb_struct[current_process].cwd);
+      lastchar_path--; 
+      while(pcb_struct[current_process].cwd[--lastchar_path] != '/'); //lastchar_path-- would be "/" so start from one less 
+      pcb_struct[current_process].cwd[++lastchar_path] = '\0';
+      return 0;
+    }
+  }
+
+  uint8_t *fileptr = NULL;
+
+  uint8_t filename[256];
+
+  if(strStartsWith((uint8_t *)path, (uint8_t *)"/") == 0){
+    fileptr = (uint8_t *)path;
+  }else{
+    strConcat(pcb_struct[current_process].cwd, path, filename);  
+    fileptr = (uint8_t *)filename;
+  }
+
+
+  int lastchar = strlen(fileptr);
+  if(fileptr[lastchar -1] != '/'){
+    fileptr[lastchar] = '/';
+    fileptr[++lastchar] = '\0';
+  }
+
+  int fileptr_index = 0;
+  if(_vfsexists((uint8_t *)&fileptr[1]) == 1){
+    while(fileptr[fileptr_index] != '\0'){
+      pcb_struct[current_process].cwd[fileptr_index] = fileptr[fileptr_index];
+      fileptr_index++;
+    }
+    pcb_struct[current_process].cwd[fileptr_index] = '\0';
+    return 0;
+  }else{
+    return -1;
+  }
+  
+  return -1; 
+}
+
+uint64_t _sysgetcwd(syscall_params *params){
+  uint8_t *buf = (uint8_t *)params->p1;
+  int fileptr_index = 0;
+  while(pcb_struct[current_process].cwd[fileptr_index] != '\0'){
+    buf[fileptr_index] = pcb_struct[current_process].cwd[fileptr_index];
+    fileptr_index++;
+  }
+  buf[fileptr_index] = '\0';
+  return (uint64_t)buf;
+}

@@ -5,6 +5,8 @@ uint64_t _termwrite(uint8_t *, uint64_t size);
 
 uint64_t _termread(uint8_t *, uint64_t size);
 
+void _termclear();
+
 typedef struct bufdetails bufdetails;
 struct bufdetails
 {

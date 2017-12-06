@@ -284,3 +284,14 @@ uint64_t _termread(uint8_t * user_buf, uint64_t size){
 	//kprintf("returning from read user_buf - %s",user_buf);
 	return no_bytes_copy;
 }
+
+void _termclear(){
+	_term_x_pos = 0;
+	_term_y_pos = 0;
+
+	for(int i =0 ;i<tymax;i++){
+		for(int j =0 ;j<txmax;j++){
+			_termbuf[i][j] = '\0';
+		}
+	}
+}

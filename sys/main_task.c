@@ -217,6 +217,8 @@ void kernel_1_thread(){
 
   stackadd -= 8;  
 
+  pcb_struct[current_process].cwd[0] = '/';
+  pcb_struct[current_process].cwd[1] = '\0';
 
   stackadd = copy_environ(args_block, (uint64_t *)stackadd, envp);
 

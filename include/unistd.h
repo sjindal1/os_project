@@ -33,4 +33,6 @@ void pscmd(void);
 
 int access(const char *pathname);
 
+void clearscr();
+
 #endif

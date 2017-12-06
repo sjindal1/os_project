@@ -112,77 +112,40 @@ void myexec(int no_of_arguments){
 }
 
 void print_pwd(){
-  int i = 0;
-  while(penv[i] != 0){
-    char *env_var = penv[i];
-    if(strStartsWith(env_var, (char *)"PWD=") == 0){
-      char path_parts[3][256];
-      strspt(env_var, path_parts, '=');
-      printf("%s\n", path_parts[1]);
-      break;
-    }
-    i++;
-  } 
+  char path[100];
+  char *path_ptr;
+  path_ptr = getcwd((char *)&path[0], 0);
+  printf("%s\n", path_ptr);
 }
 
-int chdir(const char *path){
-  char *fileptr = NULL;
-
-  char filename[256];
-  int i = 0;
-
-  if(strStartsWith((char *)path, "/") == 0){
-    fileptr = (char *)path;
-  }else{    
+void change_directory(){
+  int result = chdir(args[1]);
+  if(result != 0){
+    printf("invalid directory\n");
+  }else{
+    int i = 0;
     while(penv[i] != 0){
       char *env_var = penv[i];
       if(strStartsWith(env_var, "PWD=") == 0){
-        char path_parts[3][256];
-        strspt(env_var, path_parts, '=');
-        strconcat(path_parts[1], (char *)path, filename);
-        fileptr = (char *)filename;
+        int len = strlen(env_var);
+        int k=0;
+        if(strcmp(args[1], "..") == 0){
+          while(penv[i][--len] != '/'); //lastchar_path-- would be "/" so start from one less 
+          penv[i][++len] = '\0';
+        }else{          
+          while(args[1][k] != '\0'){
+            penv[i][len] = args[1][k];
+            len++;
+            k++;
+          }
+          penv[i][len] = '\0';
+        }
         break;
       }
       i++;
     }
   }
-
-  if(strcmp((char *)path, "..") == 0){
-    int lastchar_path = strlen(penv[i]);
-    lastchar_path--; 
-    if(strcmp(penv[i], "PWD=/") != 0){
-      while(penv[i][--lastchar_path] != '/'); //lastchar_path-- would be "/" so start from one less 
-      penv[i][++lastchar_path] = '\0';
-      return 1;
-    }else{
-      return 0;
-    }
-  }
-
-  int lastchar = strlen(fileptr);
-  if(fileptr[lastchar -1] != '/'){
-    fileptr[lastchar] = '/';
-    fileptr[++lastchar] = '\0';
-  }
-  
-  int result = access(fileptr);
-  if(result == 1){
-    penv[i][0] = 'P';
-    penv[i][1] = 'W';
-    penv[i][2] = 'D';
-    penv[i][3] = '=';
-    int j = 4,k=0;
-    while(fileptr[k] != '\0'){
-      penv[i][j] = fileptr[k];
-      j++;
-      k++;
-    }
-    penv[i][j] = '\0';
-  }
-
-  return result; 
 }
-
 
 int8_t check_command_exists(char *path){
   char *fileptr = NULL;
@@ -293,12 +256,12 @@ void execute_commands(int no_of_arguments){
   }else if(strStartsWith(args[0], "pwd") == 0){
     print_pwd();
   }else if(strStartsWith(args[0], "cd") == 0){
-    int result = chdir(args[1]);
-    if(result == 0){
-      printf("invalid directory\n");
-    }
+    change_directory();
   }else if(strcmp(args[0], "exit") == 0){
+    clearscr();
     exit(0);
+  }else if(strcmp(args[0], "clear") == 0){
+    clearscr();
   }else if(strcmp(args[0], "sleep") == 0){
     unsigned int secs = (unsigned int)get_int_val(args[1]);
     sleep(secs);
