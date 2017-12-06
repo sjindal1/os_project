@@ -260,7 +260,7 @@ void checkforbackground(int no_of_arguments)
   {
     for(i = 0; ; i++)
     {
-      if(args[i][0] == '\0')
+      if(args[i] == NULL)
         break;
 
       if((args[i][0] == '&') && (args[i][1] == '\0'))
