@@ -9,10 +9,10 @@ int ctrl_pressed = 0;
 
 #define COUNT_VAL 100
 
-void print_time(int time);
+void print_time(uint64_t time);
 
 int timer_counter = COUNT_VAL;
-int time = 0;
+uint64_t time = 0;
 char timer_pos = 0;
 
 void timer_print()
@@ -42,7 +42,7 @@ void int_6_print()
   kprintf("6th interrupt occured\n");
 }
 
-void print_time(int time){
+void print_time(uint64_t time){
   int sec = time % 60;
   int min = time / 60;
   char time_str[] = "Time Since Boot : 00:00";

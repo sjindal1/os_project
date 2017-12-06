@@ -8,6 +8,8 @@
 #include <sys/tarfs.h>
 #include <sys/syscalls.h>
 
+extern uint64_t time;
+
 uint64_t _syswrite(syscall_params *params);
 uint64_t _sysread(syscall_params *params);
 uint64_t _sysexit(syscall_params *params);
@@ -25,7 +27,7 @@ uint64_t _sysreaddir(syscall_params *params);
 uint64_t _sysclosedir(syscall_params *params);
 uint64_t _sysstartproc(syscall_params *params);
 uint64_t _syskill(syscall_params *params);
-
+uint64_t _syssleep(syscall_params *params);
 
 void switch_to_ring3(uint64_t *, uint64_t);
 
@@ -76,6 +78,7 @@ void init_syscalls(){
 
   // Our OS functionalities
   sysfunc[10] = &_sysps;
+  sysfunc[198] = &_syssleep;
   sysfunc[199] = &_sysstartproc;
 
 
@@ -214,6 +217,10 @@ uint64_t _sysread(syscall_params *params){
 	return 1;*/
 
 	return _vfsread(params->p1, (uint8_t *)params->p2, params->p3);;
+}
+
+uint64_t _syssleep(syscall_params *params){
+  return time;
 }
 
 uint64_t _syskill(syscall_params *params){

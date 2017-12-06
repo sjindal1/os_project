@@ -16,6 +16,7 @@
 .global closedir
 .global startproc
 .global kill
+.global sys_sleep
 
 // cc - rdi, rsi, rdx, rcx, r8, r9
 // stdin - rdi
@@ -113,5 +114,10 @@ startproc:
 
 kill:
 	movq $62, %rax;
+	syscall;
+	retq;
+
+sys_sleep:
+	movq $198, %rax;
 	syscall;
 	retq;

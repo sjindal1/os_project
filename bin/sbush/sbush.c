@@ -299,6 +299,9 @@ void execute_commands(int no_of_arguments){
     }
   }else if(strcmp(args[0], "exit") == 0){
     exit(0);
+  }else if(strcmp(args[0], "sleep") == 0){
+    unsigned int secs = (unsigned int)get_int_val(args[1]);
+    sleep(secs);
   }else if(strStartsWith(args[0], "kill") == 0){
     call_kill(no_of_arguments);
   }
