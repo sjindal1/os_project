@@ -13,4 +13,9 @@ int opendir(const char *name);
 int readdir(const char *name);
 int closedir(const char *name);
 
+/*
+DIR *opendir(const char *name);
+struct dirent *readdir(DIR *dirp);
+int closedir(DIR *dirp);
+*/
 #endif

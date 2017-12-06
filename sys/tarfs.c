@@ -109,7 +109,7 @@ uint32_t get_int_size(char *size){
 // output - start address
 // if file not found returns 0
 //uint64_t openelf(uint8_t filename, int *size)
-uint64_t _tarfsopen(uint8_t *filename)
+uint64_t _tarfsopen(uint8_t *filename, uint32_t *fsize)
 {
   uint16_t i, res = 1;
 
@@ -117,9 +117,13 @@ uint64_t _tarfsopen(uint8_t *filename)
   {
     res = strcmp(filename, ftarinfo[i].fname);
     if(res == 0)
+    {
+      *fsize = ftarinfo[i].fsize;
       return ftarinfo[i].fstartaddr;
+    }
   }
 
+  *fsize = 0;
   return 0;
 }
 

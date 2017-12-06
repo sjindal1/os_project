@@ -24,6 +24,7 @@ struct filedes{
 	uint64_t offset;
 	uint8_t status;
 	uint8_t permissions;
+  uint32_t size;
 };
 
 struct pcb
@@ -46,6 +47,7 @@ struct pcb
   uint8_t my_child[MAX_PROC];
   uint8_t wait_child[MAX_PROC];
   uint8_t wait_for_any_proc;
+  uint8_t cwd[256];
 };
 
 extern pcb pcb_struct[];
