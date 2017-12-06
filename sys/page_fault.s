@@ -36,6 +36,8 @@ _x86_64_page_fault:
 	movq %cr2, %rax;
 	movq %rax, pf_cr2;
   call page_fault_handle
+  mov $0x20, %al
+  out %al, $0x20
 
   popq %r15;
 	popq %r14;

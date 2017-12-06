@@ -131,7 +131,7 @@ uint64_t kernel_syscall()
     /*volatile uint64_t *p_stack = pcb_struct[current_process].kstack;
     retval = p_stack[511];*/
     //kprintf("retval %d\n", retval);
-    yield();
+    //yield();
     return retval;
     //return pcb_struct[current_process].kstack[511];
 	}else{
