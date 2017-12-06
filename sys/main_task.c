@@ -183,12 +183,12 @@ void kernel_1_thread(){
   }
   init_tarfs();
 
-  char filename[] = "bin/sbush";
+  char filename[] = "bin/init";
   uint8_t *fileptr = (uint8_t *)filename;
 
   int16_t fd = _vfsopen(fileptr);
 
-  kprintf("bin/sbush fd - %d",fd);
+  kprintf("bin/init fd - %d",fd);
 
   loadelffile(&pcb_struct[current_process], fd);  
 
