@@ -56,6 +56,7 @@ void clean_up(volatile pcb *last){
   kfree(last->mal_256_info);
   kfree(last->mal_512_info);
   kfree(last->mal_4096_info);
+  kfree(last->mpi);
 
   pcb_struct[last->pid].state = -1;   // put it to exit state
 

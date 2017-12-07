@@ -109,7 +109,7 @@ void display_prompt()
 #if 1
   if(pptr < 10)
   {
-    pch[pptr] = (char *) malloc (4096);
+    pch[pptr] = (char *) malloc (256);
     pch[pptr][0] = 'p';
     pch[pptr][1] = 'r';
     pch[pptr][2] = 'u';

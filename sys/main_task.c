@@ -236,6 +236,7 @@ void kernel_1_thread(){
   pcb_struct[current_process].mal_256_info = (uint64_t*)kmalloc(4096);
   pcb_struct[current_process].mal_512_info = (uint64_t*)kmalloc(4096);
   pcb_struct[current_process].mal_4096_info = (uint64_t*)kmalloc(4096);
+  pcb_struct[current_process].mpi = (uint64_t*)kmalloc(4096);
 
   //switching to ring 3
   uint64_t tss_stack = (uint64_t)kmalloc(4096);

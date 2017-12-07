@@ -13,6 +13,15 @@ typedef struct pcb pcb;
 typedef struct filedes filedes;
 typedef struct stvma vma_type;
 
+typedef struct mem_page_info mem_page_info;
+
+struct mem_page_info
+{
+  uint64_t startva;
+  uint32_t no_of_pages;
+  uint8_t status;
+};
+
 struct stvma{
 	uint64_t startva;
 	uint64_t size;
@@ -58,6 +67,7 @@ struct pcb
   uint64_t *mal_256_info;
   uint64_t *mal_512_info;
   uint64_t *mal_4096_info;
+  uint64_t *mpi; //typecast to struct mem_page_info
 };
 
 extern pcb pcb_struct[];

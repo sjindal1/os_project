@@ -379,6 +379,8 @@ void create_pcb_copy(){
   pcb_struct[free_pcb].mal_256_info = (uint64_t*)kmalloc(4096);
   pcb_struct[free_pcb].mal_512_info = (uint64_t*)kmalloc(4096);
   pcb_struct[free_pcb].mal_4096_info = (uint64_t*)kmalloc(4096);
+  pcb_struct[free_pcb].mpi = (uint64_t*)kmalloc(4096);
+
   for(int i = 0; i < 512; i++){
     pcb_struct[free_pcb].mal_16_info[i] = pcb_struct[current_process].mal_16_info[i];
     pcb_struct[free_pcb].mal_32_info[i] = pcb_struct[current_process].mal_32_info[i];
@@ -386,6 +388,7 @@ void create_pcb_copy(){
     pcb_struct[free_pcb].mal_256_info[i] = pcb_struct[current_process].mal_256_info[i];
     pcb_struct[free_pcb].mal_512_info[i] = pcb_struct[current_process].mal_512_info[i];
     pcb_struct[free_pcb].mal_4096_info[i] = pcb_struct[current_process].mal_4096_info[i];
+    pcb_struct[free_pcb].mpi[i] = pcb_struct[current_process].mpi[i];
 
   }
 
@@ -704,8 +707,21 @@ uint64_t _sysbrk(syscall_params *params)
   }else{
   	uint64_t prev_size = pcb_struct[current_process].heap_vma[6].size;
 
-  	pcb_struct[current_process].heap_vma[6].size += reqsize;
+    pcb_struct[current_process].heap_vma[6].size += ((reqsize+4095)/4096)*4096;
 
+    mem_page_info *mpi = (mem_page_info *)pcb_struct[current_process].mpi;
+    int i;
+    for(i = 0;i < 256; i++){
+      if(mpi[i].status == 0){
+        mpi[i].status = 1;
+        mpi[i].startva = pcb_struct[current_process].heap_vma[6].startva + prev_size;
+        mpi[i].no_of_pages = ((reqsize+4095)/4096);
+        break;
+      }
+    }
+    if(i == 256){
+      return 0;
+    }
   	return pcb_struct[current_process].heap_vma[6].startva + prev_size;
   }
 }
@@ -726,22 +742,27 @@ uint64_t _sys_munmap(syscall_params *params){
     uint32_t index = (free_add%pcb_struct[current_process].heap_vma[i].startva)/16;
     uint8_t *info_16 = (uint8_t *)pcb_struct[current_process].mal_16_info; 
     info_16[index] = 0;
+    invlpg((uint64_t *)free_add);    
   }else if(i == 1){
     uint32_t index = (free_add%pcb_struct[current_process].heap_vma[i].startva)/32;
     uint8_t *info_32 = (uint8_t *)pcb_struct[current_process].mal_32_info; 
     info_32[index] = 0;
+    invlpg((uint64_t *)free_add);
   }else if(i == 2){
     uint32_t index = (free_add%pcb_struct[current_process].heap_vma[i].startva)/64;
     uint8_t *info_64 = (uint8_t *)pcb_struct[current_process].mal_64_info; 
     info_64[index] = 0;
+    invlpg((uint64_t *)free_add);
   }else if(i == 3){
     uint32_t index = (free_add%pcb_struct[current_process].heap_vma[i].startva)/256;
     uint8_t *info_256 = (uint8_t *)pcb_struct[current_process].mal_256_info; 
     info_256[index] = 0;
+    invlpg((uint64_t *)free_add);
   }else if(i == 4){
     uint32_t index = (free_add%pcb_struct[current_process].heap_vma[i].startva)/512;
     uint8_t *info_512 = (uint8_t *)pcb_struct[current_process].mal_512_info; 
     info_512[index] = 0;
+    invlpg((uint64_t *)free_add);
   }else if(i == 5){
     uint32_t index = (free_add%pcb_struct[current_process].heap_vma[i].startva)/4096;
     uint8_t *info_4096 = (uint8_t *)pcb_struct[current_process].mal_4096_info; 
@@ -754,18 +775,32 @@ uint64_t _sys_munmap(syscall_params *params){
     }
     invlpg((uint64_t *)free_add);
   }else{
+    mem_page_info *mpi = (mem_page_info *)pcb_struct[current_process].mpi;
+    uint32_t i, no_of_pages = 0;
+    for(i = 0;i < 256; i++){
+      if(free_add >= mpi[i].startva && free_add <= mpi[i].startva + (mpi[i].no_of_pages)*4096){
+        mpi[i].status = 0;
+        mpi[i].startva = 0;
+        no_of_pages = mpi[i].no_of_pages;
+        mpi[i].no_of_pages = 0;
+        break;
+      }
+    }
+    if(i == 256){
+      return 1;
+    }
+
     uint64_t pt_off = get_pt((uint64_t)free_add);
     uint64_t *pt_va = (uint64_t *)get_pt_va_add((uint64_t)free_add);
     uint64_t pt_p_add = pt_va[pt_off];
-    if((pt_p_add & 0x1) == 1){
-      free((uint64_t *)pt_p_add);
+
+    for(i = 0; i<no_of_pages;i++){
+      pt_p_add = pt_va[pt_off+i];
+      if((pt_p_add & 0x1) == 1){
+        free((uint64_t *)pt_p_add);
+      }
+      invlpg((uint64_t *)free_add+i*4096);
     }
-    pt_p_add = pt_va[pt_off+1];
-    if((pt_p_add & 0x1) == 1){
-      free((uint64_t *)pt_p_add);
-    }
-    invlpg((uint64_t *)free_add);
-    invlpg((uint64_t *)(free_add+4096));
   }
   return 0;
 }
