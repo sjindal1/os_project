@@ -176,7 +176,7 @@ void _termupdatecmdbuf(char str)
 			cmdbuf[cur_cmd_bufy][cur_cmd_xpos+1] = '\0';
 			bufinfo[cur_cmd_bufy].size = cur_cmd_xpos;
 			bufinfo[cur_cmd_bufy].valid = 1;
-			kprintf("%d %d %d %s\n", cur_cmd_bufy, bufinfo[cur_cmd_bufy].size, bufinfo[cur_cmd_bufy].valid, cmdbuf[cur_cmd_bufy]);
+			//kprintf("%d %d %d %s\n", cur_cmd_bufy, bufinfo[cur_cmd_bufy].size, bufinfo[cur_cmd_bufy].valid, cmdbuf[cur_cmd_bufy]);
 
 			cur_cmd_bufy++;
 			cur_cmd_xpos = 0;
@@ -208,8 +208,10 @@ void _termupdatecmdbuf(char str)
 	return;
 }
 
+uint8_t term_shift_pressed = 0, term_ctrl_pressed = 0;
+
 void _term_keypress_handle(){
-	uint8_t shift_pressed = 0, ctrl_pressed = 0;
+	
 	unsigned char scan_code;
 	__asm__ __volatile__ ("inb $0x60, %%al\n\t"
 	                       "movb %%al, %0"
@@ -220,14 +222,14 @@ void _term_keypress_handle(){
 	str[1] ='\0';
 	if(scan_code < 129){
 	   if(scan_code == 42 || scan_code == 54){
-	     shift_pressed = 1;
+	     term_shift_pressed = 1;
 	   } 
 	   else if(scan_code == 29){
-	     ctrl_pressed = 1;
+	     term_shift_pressed = 1;
 	   }else{
-	     if(shift_pressed == 1){
+	     if(term_shift_pressed == 1){
 	       str[0] =  ps2_ascii_shift_mappings[scan_code];
-	     }else if(ctrl_pressed == 1){
+	     }else if(term_shift_pressed == 1){
 	       str[0] =  ps2_ascii_mapping[scan_code];
 	     }
 	     else{
@@ -238,16 +240,16 @@ void _term_keypress_handle(){
 	   }
 	 }else{
 	   if(scan_code == 170 || scan_code == 182){
-	     shift_pressed = 0;
+	     term_shift_pressed = 0;
 	   } 
 	   else if(scan_code == 157){
-	     ctrl_pressed = 0;
+	     term_shift_pressed = 0;
 	   }
 	 }
 }
 
 uint64_t _termread(uint8_t * user_buf, uint64_t size){
-	kprintf("inside term read, user_buf = %x, size = %d\n", user_buf, size);
+	//kprintf("inside term read, user_buf = %x, size = %d\n", user_buf, size);
 	uint64_t temp = 0;
 	while(1){
 		volatile uint8_t flag = bufinfo[cur_read_bufy].valid;
@@ -279,6 +281,17 @@ uint64_t _termread(uint8_t * user_buf, uint64_t size){
 	if(cur_read_bufy == ncmdbuf){
 		cur_read_bufy = 0;
 	}
-	kprintf("returning from read user_buf - %s",user_buf);
+	//kprintf("returning from read user_buf - %s",user_buf);
 	return no_bytes_copy;
+}
+
+void _termclear(){
+	_term_x_pos = 0;
+	_term_y_pos = 0;
+
+	for(int i =0 ;i<tymax;i++){
+		for(int j =0 ;j<txmax;j++){
+			_termbuf[i][j] = '\0';
+		}
+	}
 }

@@ -12,6 +12,15 @@
 .global close
 .global access
 .global brk
+.global readdir
+.global opendir
+.global closedir
+.global startproc
+.global kill
+.global sys_sleep
+.global getcwd
+.global chdir
+.global clearscr
 
 // cc - rdi, rsi, rdx, rcx, r8, r9
 // stdin - rdi
@@ -92,3 +101,47 @@ brk:
 	syscall;
 	retq;
 
+opendir:
+	movq $177, %rax;
+	syscall;
+	retq;
+
+readdir:
+	movq $178, %rax;
+	syscall;
+	retq;
+
+closedir:
+	movq $179, %rax;
+	syscall;
+	retq;
+
+startproc:
+	movq $199, %rax;
+	syscall;
+	retq;
+
+kill:
+	movq $62, %rax;
+	syscall;
+	retq;
+
+sys_sleep:
+	movq $198, %rax;
+	syscall;
+	retq;
+
+chdir:
+	movq $80, %rax;
+	syscall;
+	retq;
+
+getcwd:
+	movq $79, %rax;
+	syscall;
+	retq;
+
+clearscr:
+	movq $197, %rax;
+	syscall;
+	retq;

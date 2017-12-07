@@ -27,6 +27,7 @@ struct filedes{
 	uint64_t offset;
 	uint8_t status;
 	uint8_t permissions;
+  uint32_t size;
 };
 
 struct pcb
@@ -51,6 +52,7 @@ struct pcb
   uint8_t wait_child[MAX_PROC];
   uint8_t wait_for_any_proc;
   uint8_t heap_allocated;
+  uint8_t cwd[256];
 };
 
 extern pcb pcb_struct[];
@@ -66,5 +68,13 @@ void save_rsp();
 void create_kernel_thread(uint64_t* func_ptr);
 
 void create_pcb_stack(uint64_t *user_cr3,uint64_t va_func);
+
+typedef struct diropen diropen;
+struct diropen
+{
+  uint8_t *fname;
+  uint8_t *previous_name;
+  uint32_t index;
+};
 
 #endif

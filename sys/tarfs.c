@@ -2,6 +2,7 @@
 #include <sys/kprintf.h>
 #include <sys/kernel.h>
 #include <sys/tarfs.h>
+#include <sys/vfs.h>
 #include <sys/utils.h>
 
 uint16_t tarfsfilecount = 0;
@@ -108,7 +109,7 @@ uint32_t get_int_size(char *size){
 // output - start address
 // if file not found returns 0
 //uint64_t openelf(uint8_t filename, int *size)
-uint64_t _tarfsopen(uint8_t *filename)
+uint64_t _tarfsopen(uint8_t *filename, uint32_t *fsize)
 {
   uint16_t i, res = 1;
 
@@ -116,9 +117,13 @@ uint64_t _tarfsopen(uint8_t *filename)
   {
     res = strcmp(filename, ftarinfo[i].fname);
     if(res == 0)
+    {
+      *fsize = ftarinfo[i].fsize;
       return ftarinfo[i].fstartaddr;
+    }
   }
 
+  *fsize = 0;
   return 0;
 }
 
@@ -145,7 +150,9 @@ void init_tarfs(){
     uint32_t int_size = get_int_size(size);
     if(int_size>0){  
       uint32_t last = int_size % 512;
-      int_size = int_size + 512 - last;
+      if(last != 0){
+        int_size = int_size + 512 - last;
+      }
     }
 
     byteptr += int_size + 512;
@@ -164,3 +171,116 @@ void init_tarfs(){
   //set the environment variables
   set_kernel_environ();
 }
+
+
+//char previous_name[256] = {"348(*abc"};
+
+void _tarfsreaddir(diropen *dirpath, uint8_t **ptr){
+  uint8_t *path = (uint8_t*) dirpath->fname;
+  uint16_t i;
+  uint16_t len = strlen(path);
+  uint8_t buf[100];
+  int k =0;
+  *ptr = NULL;
+
+  i = dirpath->index;
+  for(; i < tarfsfilecount; i++)
+  {
+    //kprintf(" skdf %s\n", ftarinfo[i].fname);
+    char * p = (char*) &ftarinfo[i].fname[0];
+    //kprintf(" %s p \n = ", p);
+    k = 0;
+    if(strcmp(path, (uint8_t *)"/") == 0){
+      while(p[k] != '\0'){
+        if(p[k] == '/') break;
+        buf[k] = p[k];
+        k++;
+      }
+
+      buf[k] = '\0';
+      //kprintf(" buf = %s \n", buf);
+      if(strcmp(buf, dirpath->previous_name) != 0)
+      {
+        strcpy(dirpath->previous_name, buf);
+        //return buf;
+        *ptr = buf;
+        dirpath->index = i;
+        break;
+      }
+    }else if(strStartsWith(ftarinfo[i].fname, path) == 0 && strcmp(ftarinfo[i].fname, path) != 0){
+      p = (char*) &ftarinfo[i].fname[len];
+
+      while(p[k] != '\0'){
+        if(p[k] == '/') break;
+        buf[k] = p[k];
+        k++;
+      }
+
+      buf[k] = '\0';
+      //kprintf(" buf = %s \n", buf);
+      if(strcmp(buf, dirpath->previous_name) != 0)
+      {
+        strcpy(dirpath->previous_name, buf);
+        //return buf;
+        *ptr = buf;
+        dirpath->index = i;
+        break;
+      }
+    //_vfswrite(1, (uint8_t*) "   ", 3);
+    }
+  }
+  //_vfswrite(1, (uint8_t*) "\n", 1);
+
+  return;
+#if 0
+  uint16_t i;
+  uint16_t len = strlen(path);
+  uint8_t buf[100];
+  int k =0;
+  char c = '\0';
+
+  for(i = 0; i < tarfsfilecount; i++)
+  {
+    //kprintf(" skdf %s\n", ftarinfo[i].fname);
+    char * p = (char*) &ftarinfo[i].fname[0];
+    //kprintf(" %s p \n = ", p);
+    k = 0;
+    if(strcmp(path, (uint8_t *)"/") == 0){
+      while(p[k] != '\0'){
+        if(p[k] == '/') break;
+        buf[k] = p[k];
+        k++;
+      }
+
+      buf[k] = '\0';
+      //kprintf(" buf = %s \n", buf);
+      if(buf[0] != c) 
+      {
+        _vfswrite(1, buf, k);
+        _vfswrite(1, (uint8_t*) "   ", 3);
+        c = buf[0];
+      }
+    }else if(strStartsWith(ftarinfo[i].fname, path) == 0 && strcmp(ftarinfo[i].fname, path) != 0){
+      p = (char*) &ftarinfo[i].fname[len];
+
+      while(p[k] != '\0'){
+        if(p[k] == '/') break;
+        buf[k] = p[k];
+        k++;
+      }
+
+      buf[k] = '\0';
+      //kprintf(" buf = %s \n", buf);
+      if(buf[0] != c) 
+      {
+        _vfswrite(1, buf, k);
+        _vfswrite(1, (uint8_t*) "   ", 3);
+        c = buf[0];
+      }
+    //_vfswrite(1, (uint8_t*) "   ", 3);
+    }
+  }
+  _vfswrite(1, (uint8_t*) "\n", 1);
+#endif
+}
+

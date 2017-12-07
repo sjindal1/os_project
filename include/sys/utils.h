@@ -23,4 +23,6 @@ void itoa(uint32_t x, uint8_t *str);
 
 uint8_t* trimwhitespaces(uint8_t *input);
 
+void strcpy(uint8_t * s1, uint8_t *s2);
+
 #endif

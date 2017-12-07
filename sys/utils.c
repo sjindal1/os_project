@@ -152,3 +152,15 @@ void itoa(uint32_t x, uint8_t *str)
 
     return;
 }
+
+void strcpy(uint8_t * s1, uint8_t *s2)
+{
+  uint16_t i = 0;
+
+  for(i = 0; s2[i] != '\0'; i++)
+    s1[i] = s2[i];
+  s1[i] = '\0';
+
+  return;
+}
+

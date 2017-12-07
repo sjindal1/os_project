@@ -1,4 +1,5 @@
 #include <sys/defs.h>
+#include <sys/kernel.h>
 #include <sys/kprintf.h>
 
 int ps2_ascii_mapping[256] = {0,0,49,50,51,52,53,54,55,56,57,48,45,61,8,9,113,119,101,114,116,121,117,105,111,112,91,93,10,0,97,115,100,102,103,104,106,107,108,59,39,96,0,92,122,120,99,118,98,110,109,44,46,47,0,42,0,32,0};
@@ -9,10 +10,10 @@ int ctrl_pressed = 0;
 
 #define COUNT_VAL 100
 
-void print_time(int time);
+void print_time(uint64_t time);
 
 int timer_counter = COUNT_VAL;
-int time = 0;
+uint64_t time = 0;
 char timer_pos = 0;
 
 void timer_print()
@@ -24,7 +25,20 @@ void timer_print()
   }else{
     timer_counter--;
   }
-    return;
+  return;
+}
+
+void premptive_switch()
+{
+  static int yield_call = 100;
+
+  if(yield_call == 0){
+    yield();
+    yield_call = 100;
+  }else{
+    yield_call--;
+  }
+  return;
 }
 
 void int_print()
@@ -42,7 +56,7 @@ void int_6_print()
   kprintf("6th interrupt occured\n");
 }
 
-void print_time(int time){
+void print_time(uint64_t time){
   int sec = time % 60;
   int min = time / 60;
   char time_str[] = "Time Since Boot : 00:00";

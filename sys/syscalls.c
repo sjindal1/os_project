@@ -6,7 +6,10 @@
 #include <sys/elf64.h>
 #include <sys/utils.h>
 #include <sys/tarfs.h>
+#include <sys/terminal.h>
 #include <sys/syscalls.h>
+
+extern uint64_t time;
 
 uint64_t _syswrite(syscall_params *params);
 uint64_t _sysread(syscall_params *params);
@@ -21,6 +24,16 @@ uint64_t _sysclose(syscall_params *params);
 uint64_t _sysps(syscall_params *params);
 uint64_t _sys_access(syscall_params *params);
 uint64_t _sysbrk(syscall_params *params);
+uint64_t _sysopendir(syscall_params *params);
+uint64_t _sysreaddir(syscall_params *params);
+uint64_t _sysclosedir(syscall_params *params);
+uint64_t _sysstartproc(syscall_params *params);
+uint64_t _syskill(syscall_params *params);
+uint64_t _syssleep(syscall_params *params);
+uint64_t _syschdir(syscall_params *params);
+uint64_t _sysgetcwd(syscall_params *params);
+uint64_t _sysclear(syscall_params *params);
+
 
 void switch_to_ring3(uint64_t *, uint64_t);
 
@@ -60,12 +73,25 @@ void init_syscalls(){
   sysfunc[59] = &_sysexec;
   sysfunc[60] = &_sysexit;
   sysfunc[61] = &_syswaitpid;
+  sysfunc[62] = &_syskill;
+
+  
+  sysfunc[79] = &_sysgetcwd;
+  sysfunc[80] = &_syschdir;
+
   sysfunc[39] = &_sysgetpid;
   sysfunc[110] = &_sysgetppid;
   sysfunc[12] = &_sysbrk;
 
   // Our OS functionalities
   sysfunc[10] = &_sysps;
+  sysfunc[177] = &_sysopendir;
+  sysfunc[178] = &_sysreaddir;
+  sysfunc[179] = &_sysclosedir;
+  sysfunc[197] = &_sysclear;
+  sysfunc[198] = &_syssleep;
+  sysfunc[199] = &_sysstartproc;
+
 
   // kprintf("efer ->%x, star -> %x, lstar -> %x, cstar -> %x, sfmask -> %x\n", efer, star, lstar, cstar, sfmask);
 }
@@ -92,7 +118,7 @@ uint64_t kernel_syscall()
 
   if(params->sysnum == 57)
   {
-    uint32_t childproc = free_pcb - 1;
+    uint32_t childproc = retval - 1;
 		//make a copy of the parent stack
  		uint64_t *parent_stack = pcb_struct[current_process].kstack;
 		uint64_t *child_stack = pcb_struct[childproc].kstack;
@@ -115,7 +141,8 @@ uint64_t kernel_syscall()
                           :"memory");
     /*volatile uint64_t *p_stack = pcb_struct[current_process].kstack;
     retval = p_stack[511];*/
-    kprintf("retval %d\n", retval);
+    //kprintf("retval %d\n", retval);
+    //yield();
     return retval;
     //return pcb_struct[current_process].kstack[511];
 	}else{
@@ -127,10 +154,105 @@ uint64_t kernel_syscall()
 	return retval;
 }
 
+uint64_t _sysstartproc(syscall_params *params){
+  __asm__ __volatile__ ("sti\n\t");
+  return 0;
+}
+
 uint64_t _sysopen(syscall_params *params){
   uint8_t *filename = (uint8_t *)params->p1;
   filename++; // tarfs starts from bin and not /bin so removing one character
   return _vfsopen(filename);
+}
+
+uint64_t _sysopendir(syscall_params *params){
+	uint8_t *filename = (uint8_t *)params->p1;
+	uint8_t *filepath;
+	uint8_t filebuf[256];
+	uint32_t i;
+
+	if(strcmp(filename, (uint8_t *)"/") == 0){
+		filepath = filename;
+	}else{
+		if(strStartsWith(filename, (uint8_t*) "/") == 0){ //absolute path
+			filepath = filename;
+		}else{                           //relative path
+			uint8_t *env_var = &pcb_struct[current_process].cwd[0];
+			strConcat(env_var, filename, filebuf);
+			filepath = filebuf;
+	    } 
+
+	    filepath++;		// to remove "/"
+	    if(_vfsexists(filepath) == 0)
+	    	return 0;
+	}
+    
+  	uint64_t *p_add = get_free_page();
+  	uint64_t va_add = (pcb_struct[current_process]._start_addr & 0xfffffffffffff000) - 4096;
+    create_pf_pt_entry(p_add, (uint64_t)va_add);
+    uint8_t *namebuf = (uint8_t*) va_add + 24;
+
+    diropen* dir = (diropen*)va_add;
+
+    for(i = 0 ; i < strlen(filepath);i++){
+		namebuf[i] = filepath[i];
+	}
+	namebuf[i] = '\0';
+
+	dir->fname = namebuf;
+	namebuf[1024] = '\0';
+	dir->previous_name = namebuf + 1024;
+	dir->index = 0;
+
+	return (uint64_t) dir;
+
+#if 0
+  uint8_t *filename = (uint8_t *)params->p1;
+  if(strcmp(filename, (uint8_t *)"/") == 0){ //root is special case
+    return 1;
+  }else{    
+    filename++; // tarfs starts from bin and not /bin so removing one character
+    return _vfsexists(filename);
+  }
+ #endif
+}
+
+uint64_t _sysclosedir(syscall_params *params){  
+  return 0;
+}
+
+uint64_t _sysclear(syscall_params *params){  
+  _termclear();
+  return 0;
+}
+
+uint64_t _sysreaddir(syscall_params *params){
+	diropen *dir = (diropen*) params->p1;
+	uint8_t *filename;
+	int i;
+
+	_vfsreaddir(dir, &filename);
+
+	if(filename == NULL)
+		return 0;
+
+	uint8_t *buf = (uint8_t*)dir + 2048;
+
+	for(i = 0 ; i < strlen(filename);i++){
+		buf[i] = filename[i];
+	}
+	buf[i] = '\0';
+
+	return (uint64_t) buf;
+
+#if 0
+  uint8_t *path = (uint8_t *)params->p1;
+  if(strcmp(path, (uint8_t *)"/") != 0){
+    path++;
+  }
+  _vfsreaddir(path);
+  return 0;
+#endif
 }
 
 uint64_t _sys_access(syscall_params *params){
@@ -149,6 +271,7 @@ uint64_t _sysclose(syscall_params *params){
     pcb_struct[current_process].mfdes[fd].addr = 0;
     pcb_struct[current_process].mfdes[fd].offset = 0;
     pcb_struct[current_process].mfdes[fd].permissions = 0;
+    pcb_struct[current_process].mfdes[fd].size = 0;
     pcb_struct[current_process].elf_start = 0;
   }
   return 0;
@@ -176,8 +299,22 @@ uint64_t _sysread(syscall_params *params){
 	return _vfsread(params->p1, (uint8_t *)params->p2, params->p3);;
 }
 
-//TODO
-//Call yield and clean this process up after the yield.
+uint64_t _syssleep(syscall_params *params){
+  return time;
+}
+
+uint64_t _syskill(syscall_params *params){
+  uint64_t pid = params->p1;
+  if(pcb_struct[pid].state != -1 && pid != 1){ // is a running process;
+    pcb_struct[pid].exit_status = params->p2;
+    pcb_struct[pid].state = 3;
+    return 0;
+  }
+  
+  return 1; // no process to kill
+}
+
+
 uint64_t _sysexit(syscall_params *params){
 	pcb_struct[current_process].exit_status = params->p1;
   pcb_struct[current_process].state = 3;
@@ -206,6 +343,7 @@ void create_pcb_copy(){
   	pcb_struct[free_pcb].mfdes[i].offset = pcb_struct[current_process].mfdes[i].offset;
   	pcb_struct[free_pcb].mfdes[i].status = pcb_struct[current_process].mfdes[i].status;
   	pcb_struct[free_pcb].mfdes[i].permissions = pcb_struct[current_process].mfdes[i].permissions;
+  	pcb_struct[free_pcb].mfdes[i].size = pcb_struct[current_process].mfdes[i].size;
   }
 
   for(int i=0 ; i<32;i++){
@@ -214,6 +352,12 @@ void create_pcb_copy(){
   	pcb_struct[free_pcb].vma[i].next = pcb_struct[current_process].vma[i].next;
   	pcb_struct[free_pcb].vma[i].offset_fs = pcb_struct[current_process].vma[i].offset_fs;
   	pcb_struct[free_pcb].vma[i].permissions = pcb_struct[current_process].vma[i].permissions;
+  }
+
+  int cwd_index = 0;
+  while(pcb_struct[current_process].cwd[cwd_index] != '\0'){
+    pcb_struct[free_pcb].cwd[cwd_index] = pcb_struct[current_process].cwd[cwd_index];
+    cwd_index++;
   }
 
   pcb_struct[free_pcb].vma_stack.startva = pcb_struct[current_process].vma_stack.startva;
@@ -257,12 +401,31 @@ uint64_t _syswaitpid(syscall_params *params){
   return 0;
 }
 
+void update_free_pcb(){
+  int i;
+  for(i = free_pcb+1; i<MAX_PROC ; i++){
+    if(pcb_struct[i].state == -1){
+      free_pcb = i;
+      return;
+    }
+  }
+  
+  for(i = 2; i<free_pcb; i++){
+    if(pcb_struct[i].state == -1){
+      free_pcb = i;
+      break;
+    }
+  }
+}
+
 uint64_t _sysfork(syscall_params *params){
 	create_pcb_copy();
   pcb_struct[current_process].my_child[free_pcb] = 1;
-	free_pcb++;
-	no_of_task++;
-	return free_pcb;
+  int child_pid = free_pcb + 1;
+  //free_pcb++;
+  update_free_pcb();
+  no_of_task++;
+  return child_pid; 
 }
 
 uint64_t _sysexec(syscall_params *params){
@@ -372,7 +535,7 @@ uint64_t _sysps(syscall_params *params)
  uint8_t buf[] = "4554445534";
 
   _vfswrite(1, (uint8_t *)"PID   TTY    NAME  \n", 20);
- for(i = 0; i < MAX_PROC; i++)
+ for(i = 1; i < MAX_PROC; i++)
  {
    if(pcb_struct[i].state != -1)
    {
@@ -381,10 +544,11 @@ uint64_t _sysps(syscall_params *params)
      _vfswrite(1, (uint8_t*) buf, strlen(buf));
      _vfswrite(1, (uint8_t*) "     TTY/0", 11);
 
-     if(i == 0)
-       _vfswrite(1, (uint8_t*) "  Kernel", 9);
-     else if(i == 1)
+     if(i == 1)
+       _vfswrite(1, (uint8_t*) "  init", 8);
+     else if(i == pcb_struct[current_process].ppid){
        _vfswrite(1, (uint8_t*) "  sbush", 8);
+     }
      else if(i == current_process)
        _vfswrite(1, (uint8_t*) "  ps", 5);
      else
@@ -396,7 +560,6 @@ uint64_t _sysps(syscall_params *params)
 
  return 0;
 }
-
 
 uint64_t _sysbrk(syscall_params *params)
 {
@@ -418,3 +581,61 @@ uint64_t _sysbrk(syscall_params *params)
 	return USER_HEAP_START;
 }
 
+uint64_t _syschdir(syscall_params *params){
+  uint8_t *path = (uint8_t *)params->p1;
+
+  if(strcmp((uint8_t *)path, (uint8_t *)"..") == 0){
+    if(strcmp((uint8_t *)pcb_struct[current_process].cwd, (uint8_t *)"/") == 0){
+      return -1;
+    }else{      
+      int lastchar_path = strlen(pcb_struct[current_process].cwd);
+      lastchar_path--; 
+      while(pcb_struct[current_process].cwd[--lastchar_path] != '/'); //lastchar_path-- would be "/" so start from one less 
+      pcb_struct[current_process].cwd[++lastchar_path] = '\0';
+      return 0;
+    }
+  }
+
+  uint8_t *fileptr = NULL;
+
+  uint8_t filename[256];
+
+  if(strStartsWith((uint8_t *)path, (uint8_t *)"/") == 0){
+    fileptr = (uint8_t *)path;
+  }else{
+    strConcat(pcb_struct[current_process].cwd, path, filename);  
+    fileptr = (uint8_t *)filename;
+  }
+
+
+  int lastchar = strlen(fileptr);
+  if(fileptr[lastchar -1] != '/'){
+    fileptr[lastchar] = '/';
+    fileptr[++lastchar] = '\0';
+  }
+
+  int fileptr_index = 0;
+  if(_vfsexists((uint8_t *)&fileptr[1]) == 1){
+    while(fileptr[fileptr_index] != '\0'){
+      pcb_struct[current_process].cwd[fileptr_index] = fileptr[fileptr_index];
+      fileptr_index++;
+    }
+    pcb_struct[current_process].cwd[fileptr_index] = '\0';
+    return 0;
+  }else{
+    return -1;
+  }
+  
+  return -1; 
+}
+
+uint64_t _sysgetcwd(syscall_params *params){
+  uint8_t *buf = (uint8_t *)params->p1;
+  int fileptr_index = 0;
+  while(pcb_struct[current_process].cwd[fileptr_index] != '\0'){
+    buf[fileptr_index] = pcb_struct[current_process].cwd[fileptr_index];
+    fileptr_index++;
+  }
+  buf[fileptr_index] = '\0';
+  return (uint64_t)buf;
+}

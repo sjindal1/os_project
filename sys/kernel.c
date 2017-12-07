@@ -2,8 +2,9 @@
 #include <sys/kprintf.h>
 #include <sys/syscalls.h>
 #include <sys/paging.h>
-#include <sys/vfs.h>
 #include <sys/kernel.h>
+#include <sys/vfs.h>
+
 
 void switch_to(pcb* , pcb*, volatile pcb**);
 
@@ -171,6 +172,7 @@ void create_kernel_thread(uint64_t* func_ptr){
   no_of_task++;
 }
 
+#if 0
 void create_pcb_stack(uint64_t *user_cr3,uint64_t va_func){
 	//Kernel Thread 1 PCB
   pcb_struct[free_pcb].pid = free_pcb;
@@ -216,6 +218,7 @@ void create_pcb_stack(uint64_t *user_cr3,uint64_t va_func){
   free_pcb++;
   no_of_task++;
 }
+#endif
 
 uint64_t get_pt_va_add(uint64_t v_add){
   uint32_t va_pml4_off = get_pml4(v_add);
@@ -305,12 +308,18 @@ void page_fault_handle(){
         }
 
       }else{
-        uint64_t *p_add = get_free_page();
-        create_pf_pt_entry(p_add, (uint64_t)va_start);
         uint8_t *elf_start = (uint8_t *)(pcb_struct[current_process].elf_start + vma->offset_fs);
-        uint8_t *va_start_byte = (uint8_t *)va_start;
-        for(int i=0;i < 4096;i++){
-          va_start_byte[i] = elf_start[i];
+        uint64_t size = vma->size;
+        size = (size+4095)/4096;
+        for(int count = 0; count<size; count++){
+          uint64_t *p_add = get_free_page();
+          create_pf_pt_entry(p_add, (uint64_t)va_start);
+          uint8_t *va_start_byte = (uint8_t *)va_start;
+          for(int i=0;i < 4096;i++){
+            va_start_byte[i] = elf_start[i];
+          }
+          elf_start += 4096;
+          va_start += 512;
         }
       }
     }

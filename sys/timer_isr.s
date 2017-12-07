@@ -6,6 +6,7 @@ count:
 .text
 .global _x86_64_timer_isr
 .global timer_print
+.global premptive_switch
 
 
 _x86_64_timer_isr:
@@ -33,6 +34,8 @@ _x86_64_timer_isr:
   call timer_print
   mov $0x20, %al
   out %al, $0x20
+
+  callq premptive_switch
   
 	popq %r15;
 	popq %r14;
