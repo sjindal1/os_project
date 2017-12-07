@@ -5,9 +5,9 @@
 #include <sys/kernel.h>
 #include <sys/terminal.h>
 
-#define ystart 12
+#define ystart 0
 #define txmax 80
-#define tymax 11
+#define tymax 23
 #define ncmdbuf 2
 #define cmdbufsiz 128
 

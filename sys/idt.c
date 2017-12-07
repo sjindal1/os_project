@@ -65,7 +65,7 @@ void init_idt(){
   set_idt_values(isr_keyboard_pointer, 0x08, 0x8E, keyboard);
 
   __asm__ __volatile__ ("lidt (%0)\n\t"
-                        //"sti\n\t"
+                        "sti\n\t"
                         :
                         :"r"(&idtr)
                         :"memory");

@@ -106,7 +106,7 @@ switch_out:
 	retq;
 
 switch_to_ring3:
-	cli;
+	//cli;
 	mov $0x23, %ax;  
 	mov %ax, %ds; 
 	mov %ax, %es;  
@@ -119,9 +119,9 @@ switch_to_ring3:
 	//pushq %rax; 
 	pushq %rsi; 
 	pushfq;  
-	popq %rax;
-	orq $0x200, %rax;
-	push %rax;
+	//popq %rax;
+	//orq $0x200, %rax;
+	//push %rax;
 	pushq $0x2B;  
 	pushq %rdi;  
 	iretq;  

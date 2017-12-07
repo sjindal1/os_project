@@ -84,8 +84,8 @@ void retps1pwd(char **b, int *pwd, char **strpwd)
   return;
 }
 
-char *pch[10];
-int pptr = 1;
+//char *pch[10];
+//int pptr = 1;
 
 void display_prompt()
 {
@@ -106,7 +106,7 @@ void display_prompt()
   err = write(1, "> ", 2);
   mprint(err);
 
-#if 1
+#if 0
   if(pptr < 10)
   {
     pch[pptr] = (char *) malloc (256);
@@ -262,6 +262,14 @@ void checkforbackground(int no_of_arguments)
   return;
 }
 
+void clear_buf(){
+  for(int i =0; i<10; i++){
+    for(int j = 0 ; j < 250; j++){
+      input_args[i][j] = '\0';
+    } 
+  }
+}
+
 
 void execute_commands(int no_of_arguments){
   if(no_of_arguments == 0){
@@ -303,6 +311,7 @@ void execute_commands(int no_of_arguments){
       printf("invalid command\n");
     }
   }
+  clear_buf();
 }
 
 
@@ -429,7 +438,7 @@ int main(int argc, char *argv[], char *envp[]) {
 	int err;
 	settheenviron(envp);
 	char input_buf[256];
-  printf("Welcome to SBUIX\n");
+  printf("Welcome to SBUNIX-OS\n");
 
   /*int *pru;
   pru = (int*)malloc(24);
@@ -441,6 +450,9 @@ int main(int argc, char *argv[], char *envp[]) {
 	while(1)
 	{
 		display_prompt();
+    for(int j = 0 ; j < 250; j++){
+      input_buf[j] = '\0';
+    } 
 		err = read(0,input_buf,256);
     if(err > 0){
   		input_buf[err] = '\0';

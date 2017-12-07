@@ -9,7 +9,7 @@ void displayBuff();
 void buffCopy();
 
 int x_pos=0, y_pos=0;
-#define ymax 12
+#define ymax 0
 #define xmax 80
 char buf[ymax][xmax];
 char final_str[1000];
@@ -37,6 +37,7 @@ void displayBuff(){
 
 
 void kprintf(const char *fmt, ...){
+    return;
     int array_pos = 0;
     va_list valist;
     va_start(valist,fmt);

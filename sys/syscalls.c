@@ -156,7 +156,13 @@ uint64_t kernel_syscall()
 }
 
 uint64_t _sysstartproc(syscall_params *params){
-  __asm__ __volatile__ ("sti\n\t");
+  //__asm__ __volatile__ ("sti\n\t");
+  /*unsigned long eflags = 0;
+  __asm__ __volatile__("pushfq\n\t"
+                       "popq %%rax\n\t"
+                       "movq %%rax, %0\n\t"
+                       :"=r"(eflags));
+  kprintf("eflags - %x\n", eflags);*/
   return 0;
 }
 

@@ -253,6 +253,12 @@ void kernel_1_thread(){
 }
 
 void kernel_2_thread(){
+  unsigned long eflags = 0;
+  __asm__ __volatile__("pushfq\n\t"
+                       "popq %%rax\n\t"
+                       "movq %%rax, %0\n\t"
+                       :"=r"(eflags));
+  kprintf("eflags - %x\n", eflags);
   while(1){
     //kprintf("This is the second kernel thread\n");
     //user process init

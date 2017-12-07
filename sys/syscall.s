@@ -50,6 +50,7 @@ syscall_handle:
 	popq %rbx;
 //	popq %rax;
 	popq %rsp;
+	sti;
 	sysretq;
 
 
