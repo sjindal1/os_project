@@ -226,9 +226,10 @@ uint64_t get_pt_va_add(uint64_t v_add){
   return return_add;
 }
 
-uint8_t is_valid_va(uint64_t v_add, vma_type **vma){
+uint8_t is_valid_va(uint64_t v_add, vma_type **vma, int *heap){
   uint8_t flag= 1; //is not valid
 
+  *heap = 0;
   pcb *p = &pcb_struct[current_process];
 
   for(int i = p->numvma-1; i>=0 ;i--){ 
@@ -251,7 +252,47 @@ uint8_t is_valid_va(uint64_t v_add, vma_type **vma){
     }
   }
 
+  if(flag == 1)
+  {
+    vma_type *vma_heap = &p->heap_vma;
+    if(v_add >= vma_heap->startva && v_add <= (vma_heap->startva + vma_heap->size))
+    {
+      *vma = (vma_type *)NULL;
+      *heap = 1;
+      flag = 0;
+    }
+  }
+
   return flag;
+}
+
+void mapcowpage(uint64_t *va_start)
+{
+  //check the ref count get pt table entry using the same approach as kfree
+  uint64_t pt_off = get_pt((uint64_t)va_start);
+  uint64_t *pt_va = (uint64_t *)get_pt_va_add((uint64_t)va_start);
+  uint64_t pt_p_add = pt_va[pt_off];
+
+  if(pt_p_add != 0x2 && (pt_p_add & 0x800) == 0x800){ //COW entry
+
+    uint64_t page_index = (uint64_t)pt_p_add/4096;
+    page_frame_t *t_start = head + page_index;
+    
+    if(t_start->ref_count == 1)        // just update the entry remove COW and return
+    {
+      pt_va[pt_off] = (pt_p_add & 0xFFFFFFFFFFFFF000) | 0x7; 
+    }else{                             // decrement the ref count create a new entry and copy data 
+      t_start->ref_count -= 1;
+      uint64_t *p_add = get_free_page();
+      uint64_t *new_page_va_add  = (uint64_t *)get_va_add((uint64_t)p_add);
+      for(int i=0;i<512;i++){
+        new_page_va_add[i] = va_start[i];
+      }
+      pt_va[pt_off] = (uint64_t)p_add | USERPAG; 
+    }
+  }
+
+  return;
 }
 
 //TODO
@@ -260,16 +301,31 @@ uint8_t is_valid_va(uint64_t v_add, vma_type **vma){
 void page_fault_handle(){
 	kprintf("cr2 - %x, pf_error_code - %x\n", pf_cr2, pf_error_code);
   vma_type *vma = NULL; 
-  uint8_t is_valid = is_valid_va(pf_cr2, &vma);
+  int heap = 0;
+  uint8_t is_valid = is_valid_va(pf_cr2, &vma, &heap);
   if(is_valid == 0){  // VALID VMA
     uint64_t *va_start = (uint64_t *)(pf_cr2 & 0xFFFFFFFFFFFFF000);
     if(vma == NULL){
-      uint64_t *p_add = get_free_page();
-      create_pf_pt_entry(p_add, (uint64_t)va_start);
+      if(heap == 0) {
+        uint64_t *p_add = get_free_page();
+        create_pf_pt_entry(p_add, (uint64_t)va_start);
+      } else { // heap case
+        if(va_entry_exists((uint64_t)va_start) == 0 ){
+          // cow case
+          mapcowpage(va_start);
+        }
+        else
+        {
+          uint64_t *p_add = get_free_page();
+          create_pf_pt_entry(p_add, (uint64_t)va_start);
+        }
+      }
     }else{
 
       if(va_entry_exists((uint64_t)va_start) == 0 ){
       
+      mapcowpage(va_start);
+#if 0
         //check the ref count get pt table entry using the same approach as kfree
         uint64_t pt_off = get_pt((uint64_t)va_start);
         uint64_t *pt_va = (uint64_t *)get_pt_va_add((uint64_t)va_start);
@@ -293,6 +349,7 @@ void page_fault_handle(){
             pt_va[pt_off] = (uint64_t)p_add | USERPAG; 
           }
         }
+#endif
       }else{
         uint8_t *elf_start = (uint8_t *)(pcb_struct[current_process].elf_start + vma->offset_fs);
         uint64_t size = vma->size;

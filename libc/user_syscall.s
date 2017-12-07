@@ -20,6 +20,7 @@
 .global getcwd
 .global chdir
 .global clearscr
+.global brk
 
 // cc - rdi, rsi, rdx, rcx, r8, r9
 // stdin - rdi
@@ -139,3 +140,9 @@ clearscr:
 	movq $197, %rax;
 	syscall;
 	retq;
+
+brk:
+	movq $12, %rax;
+	syscall;
+	retq;
+

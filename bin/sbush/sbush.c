@@ -84,6 +84,9 @@ void retps1pwd(char **b, int *pwd, char **strpwd)
   return;
 }
 
+//char *pch[10];
+//int pptr = 1;
+
 void display_prompt()
 {
   char *buf = NULL;//, *buf1 = NULL;
@@ -102,6 +105,21 @@ void display_prompt()
 
   err = write(1, "> ", 2);
   mprint(err);
+
+#if 0
+  if(pptr < 10)
+  {
+    pch[pptr] = (char *) malloc (200);
+    pch[pptr][0] = 'p';
+    pch[pptr][1] = 'r';
+    pch[pptr][2] = 'u';
+
+    pptr++;
+
+
+    //free(pch[pptr]);
+  }
+#endif
 
   return;
 }
@@ -412,6 +430,14 @@ int main(int argc, char *argv[], char *envp[]) {
 	settheenviron(envp);
 	char input_buf[256];
   printf("Welcome to SBUIX\n");
+
+  /*int *pru;
+  pru = (int*)malloc(24);
+  
+  *pru = 10;
+
+  printf(" success %d\n", *pru); */
+
 	while(1)
 	{
 		display_prompt();

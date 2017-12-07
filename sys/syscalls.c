@@ -32,7 +32,7 @@ uint64_t _syssleep(syscall_params *params);
 uint64_t _syschdir(syscall_params *params);
 uint64_t _sysgetcwd(syscall_params *params);
 uint64_t _sysclear(syscall_params *params);
-
+uint64_t _sysbrk(syscall_params *params);
 
 void switch_to_ring3(uint64_t *, uint64_t);
 
@@ -67,6 +67,7 @@ void init_syscalls(){
   sysfunc[1] = &_syswrite;
   sysfunc[2] = &_sysopen;
   sysfunc[3] = &_sysclose;
+  sysfunc[12] = &_sysbrk;
   sysfunc[21] = &_sys_access;
   sysfunc[57] = &_sysfork;
   sysfunc[59] = &_sysexec;
@@ -361,6 +362,13 @@ void create_pcb_copy(){
   pcb_struct[free_pcb].vma_stack.offset_fs = pcb_struct[current_process].vma_stack.offset_fs;
   pcb_struct[free_pcb].vma_stack.permissions = pcb_struct[current_process].vma_stack.permissions;
 
+  // heap
+  pcb_struct[free_pcb].heap_vma.startva = pcb_struct[current_process].heap_vma.startva;
+  pcb_struct[free_pcb].heap_vma.size = pcb_struct[current_process].heap_vma.size;
+  pcb_struct[free_pcb].heap_vma.next = pcb_struct[current_process].heap_vma.next;
+  pcb_struct[free_pcb].heap_vma.offset_fs = pcb_struct[current_process].heap_vma.offset_fs;
+  pcb_struct[free_pcb].heap_vma.permissions = pcb_struct[current_process].heap_vma.permissions;
+
   //make a copy of the parent stack
   uint64_t *parent_stack = pcb_struct[current_process].kstack;
   uint64_t *child_stack = pcb_struct[free_pcb].kstack;
@@ -613,4 +621,15 @@ uint64_t _sysgetcwd(syscall_params *params){
   }
   buf[fileptr_index] = '\0';
   return (uint64_t)buf;
+}
+
+uint64_t _sysbrk(syscall_params *params)
+{
+	uint64_t reqsize = (uint64_t) params->p1;
+	
+	uint64_t prev_size = pcb_struct[current_process].heap_vma.size;
+
+	pcb_struct[current_process].heap_vma.size += reqsize;
+
+	return pcb_struct[current_process].heap_vma.startva + prev_size;
 }

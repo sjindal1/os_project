@@ -201,6 +201,10 @@ void kernel_1_thread(){
 
   uint64_t *pa_add = get_free_pages(5); // 4 for thr stack and 1 for envp
 
+  pcb_struct[current_process].heap_vma.startva = USER_HEAP_START;
+  pcb_struct[current_process].heap_vma.size = USER_HEAP_SIZE;
+  pcb_struct[current_process].heap_vma.permissions = 0xff;
+  \
   pcb_struct[current_process].vma_stack.startva = stackadd;
 
   pcb_struct[current_process].vma_stack.size = 4*4096;

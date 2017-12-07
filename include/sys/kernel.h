@@ -4,6 +4,9 @@
 #define MAX_PROC 1024
 #define MAX_FDEFS 16
 
+#define USER_HEAP_START 0x1000000
+#define USER_HEAP_SIZE 0
+
 void main_task();
 
 typedef struct pcb pcb;
@@ -41,6 +44,7 @@ struct pcb
   uint64_t _start_addr;			// Entry point from the elf header
   vma_type vma[32];
   vma_type vma_stack;
+  vma_type heap_vma;
   uint8_t numvma;				// number of valid VMA entries
   uint64_t elf_start;
   uint64_t ppid;

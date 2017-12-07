@@ -35,4 +35,6 @@ int access(const char *pathname);
 
 void clearscr();
 
+void* brk(size_t);
+
 #endif
