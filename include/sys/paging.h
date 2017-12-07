@@ -40,6 +40,8 @@ uint64_t get_va_add(uint64_t p_add);
 
 void invalidate_tlb();
 
+void invlpg(void* m);
+
 void page_inc_ref_count(uint64_t pa_add);
 
 uint8_t va_entry_exists(uint64_t v_add);

@@ -52,6 +52,28 @@ void parsetheprogramheader(pcb *p, int16_t efd, uint64_t pgoffset, uint32_t size
 	}
 
 	p->numvma = vma_count;
+	uint64_t heap_start = ((p->vma[vma_count - 1].startva + p->vma[vma_count - 1].size) & 0xFFFFFFFFFFFFF000) + 11*4096; // start at 10*4096 + end of last vma
+	
+	p->heap_vma[0].startva = heap_start;
+	p->heap_vma[0].size = 16*1024;
+
+  p->heap_vma[1].startva = heap_start + 16*1024 + 4096;
+	p->heap_vma[1].size = 32*1024;
+
+  p->heap_vma[2].startva = heap_start + 16*1024 + 32*1024 + 4096;
+	p->heap_vma[2].size = 64*1024;
+
+  p->heap_vma[3].startva = heap_start + 16*1024 + 32*1024 + 64*1024 + 4096;
+	p->heap_vma[3].size = 256*1024;
+
+  p->heap_vma[4].startva = heap_start + 16*1024 + 32*1024 + 64*1024 + 256*1024 + 4096 ;
+	p->heap_vma[4].size = 512*1024;
+
+  p->heap_vma[5].startva = heap_start + 16*1024 + 32*1024 + 64*1024 + 256*1024 + 512*1024 + 4096;
+	p->heap_vma[5].size = 4096*1024;
+
+	p->heap_vma[6].startva = heap_start + 16*1024 + 32*1024 + 64*1024 + 256*1024 + 512*1024 + + 4096*1024 + 4096;
+	p->heap_vma[6].size = 0;
 
 }
 uint32_t loadelffile(pcb *p, int16_t efd)
@@ -112,6 +134,14 @@ uint32_t clear_load_file(pcb *p, int16_t efd){
 	}
 
 	p->numvma = 0;
+
+	for(int i =0; i < 7 ; i++){
+		for(int j=0;j<(p->heap_vma[i].size)/4096;j++){
+			clear_page_table_entry(p->heap_vma[i].startva);
+		}
+		p->heap_vma[i].startva = 0;
+		p->heap_vma[i].size = 0;
+	}
 
 	loadelffile(p, efd);
 

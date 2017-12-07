@@ -84,8 +84,8 @@ void retps1pwd(char **b, int *pwd, char **strpwd)
   return;
 }
 
-//char *pch[10];
-//int pptr = 1;
+char *pch[10];
+int pptr = 1;
 
 void display_prompt()
 {
@@ -106,18 +106,18 @@ void display_prompt()
   err = write(1, "> ", 2);
   mprint(err);
 
-#if 0
+#if 1
   if(pptr < 10)
   {
-    pch[pptr] = (char *) malloc (200);
+    pch[pptr] = (char *) malloc (4096);
     pch[pptr][0] = 'p';
     pch[pptr][1] = 'r';
     pch[pptr][2] = 'u';
 
+    free(pch[pptr]);
     pptr++;
 
 
-    //free(pch[pptr]);
   }
 #endif
 

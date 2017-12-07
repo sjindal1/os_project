@@ -21,6 +21,7 @@
 .global chdir
 .global clearscr
 .global brk
+.global munmap
 
 // cc - rdi, rsi, rdx, rcx, r8, r9
 // stdin - rdi
@@ -143,6 +144,11 @@ clearscr:
 
 brk:
 	movq $12, %rax;
+	syscall;
+	retq;
+
+munmap:
+	movq $11, %rax;
 	syscall;
 	retq;
 

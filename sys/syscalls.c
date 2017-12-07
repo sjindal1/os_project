@@ -33,6 +33,7 @@ uint64_t _syschdir(syscall_params *params);
 uint64_t _sysgetcwd(syscall_params *params);
 uint64_t _sysclear(syscall_params *params);
 uint64_t _sysbrk(syscall_params *params);
+uint64_t _sys_munmap(syscall_params *params); 
 
 void switch_to_ring3(uint64_t *, uint64_t);
 
@@ -67,6 +68,7 @@ void init_syscalls(){
   sysfunc[1] = &_syswrite;
   sysfunc[2] = &_sysopen;
   sysfunc[3] = &_sysclose;
+  sysfunc[11] = &_sys_munmap;
   sysfunc[12] = &_sysbrk;
   sysfunc[21] = &_sys_access;
   sysfunc[57] = &_sysfork;
@@ -363,11 +365,29 @@ void create_pcb_copy(){
   pcb_struct[free_pcb].vma_stack.permissions = pcb_struct[current_process].vma_stack.permissions;
 
   // heap
-  pcb_struct[free_pcb].heap_vma.startva = pcb_struct[current_process].heap_vma.startva;
-  pcb_struct[free_pcb].heap_vma.size = pcb_struct[current_process].heap_vma.size;
-  pcb_struct[free_pcb].heap_vma.next = pcb_struct[current_process].heap_vma.next;
-  pcb_struct[free_pcb].heap_vma.offset_fs = pcb_struct[current_process].heap_vma.offset_fs;
-  pcb_struct[free_pcb].heap_vma.permissions = pcb_struct[current_process].heap_vma.permissions;
+  for(int i = 0; i < 7; i++){
+    pcb_struct[free_pcb].heap_vma[i].startva = pcb_struct[current_process].heap_vma[i].startva;
+    pcb_struct[free_pcb].heap_vma[i].size = pcb_struct[current_process].heap_vma[i].size;
+    pcb_struct[free_pcb].heap_vma[i].next = pcb_struct[current_process].heap_vma[i].next;
+    pcb_struct[free_pcb].heap_vma[i].offset_fs = pcb_struct[current_process].heap_vma[i].offset_fs;
+    pcb_struct[free_pcb].heap_vma[i].permissions = pcb_struct[current_process].heap_vma[i].permissions;
+  }
+
+  pcb_struct[free_pcb].mal_16_info = (uint64_t*)kmalloc(4096);
+  pcb_struct[free_pcb].mal_32_info = (uint64_t*)kmalloc(4096);
+  pcb_struct[free_pcb].mal_64_info = (uint64_t*)kmalloc(4096);
+  pcb_struct[free_pcb].mal_256_info = (uint64_t*)kmalloc(4096);
+  pcb_struct[free_pcb].mal_512_info = (uint64_t*)kmalloc(4096);
+  pcb_struct[free_pcb].mal_4096_info = (uint64_t*)kmalloc(4096);
+  for(int i = 0; i < 512; i++){
+    pcb_struct[free_pcb].mal_16_info[i] = pcb_struct[current_process].mal_16_info[i];
+    pcb_struct[free_pcb].mal_32_info[i] = pcb_struct[current_process].mal_32_info[i];
+    pcb_struct[free_pcb].mal_64_info[i] = pcb_struct[current_process].mal_64_info[i];
+    pcb_struct[free_pcb].mal_256_info[i] = pcb_struct[current_process].mal_256_info[i];
+    pcb_struct[free_pcb].mal_512_info[i] = pcb_struct[current_process].mal_512_info[i];
+    pcb_struct[free_pcb].mal_4096_info[i] = pcb_struct[current_process].mal_4096_info[i];
+
+  }
 
   //make a copy of the parent stack
   uint64_t *parent_stack = pcb_struct[current_process].kstack;
@@ -626,10 +646,126 @@ uint64_t _sysgetcwd(syscall_params *params){
 uint64_t _sysbrk(syscall_params *params)
 {
 	uint64_t reqsize = (uint64_t) params->p1;
-	
-	uint64_t prev_size = pcb_struct[current_process].heap_vma.size;
+  uint32_t i;
+  if(reqsize <= 16){
+    uint8_t *info_16 = (uint8_t *)pcb_struct[current_process].mal_16_info; 
+    for(i =0; i < 1024; i++){
+      if(info_16[i] == 0){
+        info_16[i] = 1;
+        break;
+      }
+    }
+    return (uint64_t)(pcb_struct[current_process].heap_vma[0].startva + 16*i);
+  }else if(reqsize <= 32){
+    uint8_t *info_32 = (uint8_t *)pcb_struct[current_process].mal_32_info;
+    for(i =0; i < 1024; i++){
+      if(info_32[i] == 0){
+        info_32[i] = 1;
+        break;
+      }
+    }
+    return (uint64_t)(pcb_struct[current_process].heap_vma[1].startva + 32*i);
+  }else if(reqsize <= 64){
+    uint8_t *info_64 = (uint8_t *)pcb_struct[current_process].mal_64_info;
+    for(i =0; i < 1024; i++){
+      if(info_64[i] == 0){
+        info_64[i] = 1;
+        break;
+      }
+    }
+    return (uint64_t)(pcb_struct[current_process].heap_vma[2].startva + 64*i);
+  }else if(reqsize <= 256){
+    uint8_t *info_256 = (uint8_t *)pcb_struct[current_process].mal_256_info;
+    for(i =0; i < 1024; i++){
+      if(info_256[i] == 0){
+        info_256[i] = 1;
+        break;
+      }
+    }
+    return (uint64_t)(pcb_struct[current_process].heap_vma[3].startva + 256*i);
+  }else if(reqsize <= 512){
+    uint8_t *info_512 = (uint8_t *)pcb_struct[current_process].mal_512_info;
+    for(i =0; i < 1024; i++){
+      if(info_512[i] == 0){
+        info_512[i] = 1;
+        break;
+      }
+    }
+    return (uint64_t)(pcb_struct[current_process].heap_vma[4].startva + 512*i);
+  }else if(reqsize <= 4096){
+    uint8_t *info_4096 = (uint8_t *)pcb_struct[current_process].mal_4096_info;
+    for(i =0; i < 1024; i++){
+      if(info_4096[i] == 0){
+        info_4096[i] = 1;
+        break;
+      }
+    }
+    return (uint64_t)(pcb_struct[current_process].heap_vma[5].startva + 4096*i);
+  }else{
+  	uint64_t prev_size = pcb_struct[current_process].heap_vma[6].size;
 
-	pcb_struct[current_process].heap_vma.size += reqsize;
+  	pcb_struct[current_process].heap_vma[6].size += reqsize;
 
-	return pcb_struct[current_process].heap_vma.startva + prev_size;
+  	return pcb_struct[current_process].heap_vma[6].startva + prev_size;
+  }
+}
+
+
+uint64_t _sys_munmap(syscall_params *params){
+  uint64_t free_add = (uint64_t) params->p1;
+  uint32_t i=0;
+  for( ; i< 7; i++){
+    if(free_add >= pcb_struct[current_process].heap_vma[i].startva 
+      && free_add < pcb_struct[current_process].heap_vma[i].startva + pcb_struct[current_process].heap_vma[i].size){
+      break;
+    }
+  }
+  if(i == 7){
+    return 1;
+  }else if(i == 0){
+    uint32_t index = (free_add%pcb_struct[current_process].heap_vma[i].startva)/16;
+    uint8_t *info_16 = (uint8_t *)pcb_struct[current_process].mal_16_info; 
+    info_16[index] = 0;
+  }else if(i == 1){
+    uint32_t index = (free_add%pcb_struct[current_process].heap_vma[i].startva)/32;
+    uint8_t *info_32 = (uint8_t *)pcb_struct[current_process].mal_32_info; 
+    info_32[index] = 0;
+  }else if(i == 2){
+    uint32_t index = (free_add%pcb_struct[current_process].heap_vma[i].startva)/64;
+    uint8_t *info_64 = (uint8_t *)pcb_struct[current_process].mal_64_info; 
+    info_64[index] = 0;
+  }else if(i == 3){
+    uint32_t index = (free_add%pcb_struct[current_process].heap_vma[i].startva)/256;
+    uint8_t *info_256 = (uint8_t *)pcb_struct[current_process].mal_256_info; 
+    info_256[index] = 0;
+  }else if(i == 4){
+    uint32_t index = (free_add%pcb_struct[current_process].heap_vma[i].startva)/512;
+    uint8_t *info_512 = (uint8_t *)pcb_struct[current_process].mal_512_info; 
+    info_512[index] = 0;
+  }else if(i == 5){
+    uint32_t index = (free_add%pcb_struct[current_process].heap_vma[i].startva)/4096;
+    uint8_t *info_4096 = (uint8_t *)pcb_struct[current_process].mal_4096_info; 
+    info_4096[index] = 0;
+    uint64_t pt_off = get_pt((uint64_t)free_add);
+    uint64_t *pt_va = (uint64_t *)get_pt_va_add((uint64_t)free_add);
+    uint64_t pt_p_add = pt_va[pt_off];
+    if((pt_p_add & 0x1) == 1){
+      free((uint64_t *)pt_p_add);
+    }
+    invlpg((uint64_t *)free_add);
+  }else{
+    uint64_t pt_off = get_pt((uint64_t)free_add);
+    uint64_t *pt_va = (uint64_t *)get_pt_va_add((uint64_t)free_add);
+    uint64_t pt_p_add = pt_va[pt_off];
+    if((pt_p_add & 0x1) == 1){
+      free((uint64_t *)pt_p_add);
+    }
+    pt_p_add = pt_va[pt_off+1];
+    if((pt_p_add & 0x1) == 1){
+      free((uint64_t *)pt_p_add);
+    }
+    invlpg((uint64_t *)free_add);
+    invlpg((uint64_t *)(free_add+4096));
+  }
+  return 0;
 }

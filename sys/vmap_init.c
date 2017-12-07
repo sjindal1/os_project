@@ -24,7 +24,7 @@ uint64_t heap_start = HEAP_START_ADD;
 
 uint64_t memend;
 
-static inline void invlpg(void* m)
+void invlpg(void* m)
 {
     /* Clobber memory to avoid optimizer re-ordering access before invlpg, which may cause nasty bugs. */
     __asm__ __volatile__ ( "invlpg (%0)" : : "r"(m) : "memory" );

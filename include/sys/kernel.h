@@ -44,7 +44,7 @@ struct pcb
   uint64_t _start_addr;			// Entry point from the elf header
   vma_type vma[32];
   vma_type vma_stack;
-  vma_type heap_vma;
+  vma_type heap_vma[7];
   uint8_t numvma;				// number of valid VMA entries
   uint64_t elf_start;
   uint64_t ppid;
@@ -52,6 +52,12 @@ struct pcb
   uint8_t wait_child[MAX_PROC];
   uint8_t wait_for_any_proc;
   uint8_t cwd[256];
+  uint64_t *mal_16_info;
+  uint64_t *mal_32_info;
+  uint64_t *mal_64_info;
+  uint64_t *mal_256_info;
+  uint64_t *mal_512_info;
+  uint64_t *mal_4096_info;
 };
 
 extern pcb pcb_struct[];
@@ -67,6 +73,8 @@ void save_rsp();
 void create_kernel_thread(uint64_t* func_ptr);
 
 void create_pcb_stack(uint64_t *user_cr3,uint64_t va_func);
+
+uint64_t get_pt_va_add(uint64_t v_add);
 
 typedef struct diropen diropen;
 struct diropen

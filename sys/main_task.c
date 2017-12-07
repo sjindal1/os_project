@@ -201,10 +201,10 @@ void kernel_1_thread(){
 
   uint64_t *pa_add = get_free_pages(5); // 4 for thr stack and 1 for envp
 
-  pcb_struct[current_process].heap_vma.startva = USER_HEAP_START;
+/*  pcb_struct[current_process].heap_vma.startva = USER_HEAP_START;
   pcb_struct[current_process].heap_vma.size = USER_HEAP_SIZE;
-  pcb_struct[current_process].heap_vma.permissions = 0xff;
-  \
+  pcb_struct[current_process].heap_vma.permissions = 0xff;*/
+  
   pcb_struct[current_process].vma_stack.startva = stackadd;
 
   pcb_struct[current_process].vma_stack.size = 4*4096;
@@ -228,6 +228,14 @@ void kernel_1_thread(){
   stackadd = copy_environ(args_block, (uint64_t *)stackadd, envp);
 
   stackadd = copy_argv(args_block + 0x800, (uint64_t *)stackadd, argvuser);
+
+
+  pcb_struct[current_process].mal_16_info = (uint64_t*)kmalloc(4096);
+  pcb_struct[current_process].mal_32_info = (uint64_t*)kmalloc(4096);
+  pcb_struct[current_process].mal_64_info = (uint64_t*)kmalloc(4096);
+  pcb_struct[current_process].mal_256_info = (uint64_t*)kmalloc(4096);
+  pcb_struct[current_process].mal_512_info = (uint64_t*)kmalloc(4096);
+  pcb_struct[current_process].mal_4096_info = (uint64_t*)kmalloc(4096);
 
   //switching to ring 3
   uint64_t tss_stack = (uint64_t)kmalloc(4096);

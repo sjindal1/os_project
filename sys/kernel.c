@@ -49,6 +49,14 @@ void clean_up(volatile pcb *last){
   //free kernel stack
   kfree(last->kstack);
 
+  //clear malloc info items
+  kfree(last->mal_16_info);
+  kfree(last->mal_32_info);
+  kfree(last->mal_64_info);
+  kfree(last->mal_256_info);
+  kfree(last->mal_512_info);
+  kfree(last->mal_4096_info);
+
   pcb_struct[last->pid].state = -1;   // put it to exit state
 
   pcb *parent = &pcb_struct[last->ppid];
@@ -254,12 +262,14 @@ uint8_t is_valid_va(uint64_t v_add, vma_type **vma, int *heap){
 
   if(flag == 1)
   {
-    vma_type *vma_heap = &p->heap_vma;
-    if(v_add >= vma_heap->startva && v_add <= (vma_heap->startva + vma_heap->size))
-    {
-      *vma = (vma_type *)NULL;
-      *heap = 1;
-      flag = 0;
+    for(int i = 0; i < 7; i++){
+      vma_type *vma_heap = &p->heap_vma[i];
+      if(v_add >= vma_heap->startva && v_add <= (vma_heap->startva + vma_heap->size))
+      {
+        *vma = (vma_type *)NULL;
+        *heap = 1;
+        flag = 0;
+      }
     }
   }
 
