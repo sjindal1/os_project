@@ -563,20 +563,23 @@ uint64_t _sysps(syscall_params *params)
 
 uint64_t _sysbrk(syscall_params *params)
 {
-	int ivmaheap = pcb_struct[current_process].heap_allocated;
+	//int ivmaheap = pcb_struct[current_process].heap_allocated;
 
+	int index = pcb_struct[current_process].heap_allocated;
 	// return a 100 MB allocation 1 time only, no increase later
 	if(pcb_struct[current_process].heap_allocated)
-		return pcb_struct[current_process].vma[ivmaheap].startva;
+		return pcb_struct[current_process].vma[index].startva;
+
+	index = pcb_struct[current_process].numvma;
 
 	pcb_struct[current_process].heap_allocated = pcb_struct[current_process].numvma;
-	pcb_struct[current_process].vma[ivmaheap].startva = USER_HEAP_START;
-	pcb_struct[current_process].vma[ivmaheap].size = USER_HEAP_SIZE;
-	pcb_struct[current_process].vma[ivmaheap].next = NULL;
-	pcb_struct[current_process].vma[ivmaheap].offset_fs = 0;
-	pcb_struct[current_process].vma[ivmaheap].permissions = 0xff;
+	pcb_struct[current_process].vma[index].startva = USER_HEAP_START;
+	pcb_struct[current_process].vma[index].size = USER_HEAP_SIZE;
+	pcb_struct[current_process].vma[index].next = NULL;
+	pcb_struct[current_process].vma[index].offset_fs = 0;
+	pcb_struct[current_process].vma[index].permissions = 0xff;
 
-	pcb_struct[current_process].numvma++;
+	pcb_struct[current_process].numvma = pcb_struct[current_process].numvma + 1;
 
 	return USER_HEAP_START;
 }

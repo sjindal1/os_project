@@ -3,6 +3,24 @@
 #include <sys/defs.h>
 #include <unistd.h>
 
+#if 1
+void *malloc(size_t size)
+{
+	//int *mem = mmap(size);
+	//int* mem = brk(size);
+
+	//return (void*) mem;
+	return (void*) 0;
+}
+
+void free(void *ap)
+{
+	// nothing to do
+	;
+}
+
+
+#else
 //****************************************************************************************
 // BELOW CODE IS TAKEN FROM THE BOOK
 //
@@ -17,17 +35,20 @@
 //****************************************************************************************
 
 // size of union is 128 bits, so alignment 64bit is only overlapping with half part
+
+typedef union head header;
+
 union head
 {
 	struct 
 	{
-		union head *ptr;
+		header *ptr;
 		uint64_t size;
 	} s;
 	uint64_t alignment;
 };
 
-typedef union head header;
+
 
 static header base;
 static header *freep = (header*) 1;			// for trial
@@ -38,11 +59,11 @@ void free(void *ap)
 	header *bp, *p;
 
 	bp = (header *)ap - 1;
-	for(p = freep; !(bp > p && bp < (header *)p->s.ptr); p = (header *)p->s.ptr)
-		if(p >= (header *)p->s.ptr && (bp > p || bp < (header *)p-> s.ptr))
+	for(p = freep; !(((uint64_t)bp > (uint64_t)p) && ((uint64_t)bp < (uint64_t)p->s.ptr)); p = p->s.ptr)
+		if(p >= p->s.ptr && (((uint64_t)bp > (uint64_t)p) || (uint64_t)bp < (uint64_t)p-> s.ptr))
 			break;
 
-	if(bp + bp->s.size == (header *)p->s.ptr)
+	if((bp + bp->s.size) == p->s.ptr)
 	{
 		header *tmp = (header *)p->s.ptr;
 		bp->s.size += tmp->s.size;
@@ -51,30 +72,30 @@ void free(void *ap)
 	else
 		bp->s.ptr = p->s.ptr;
 
-	if((uint64_t) p + p->s.size == (uint64_t) bp)
+	if(/*(uint64_t)*/ (p + p->s.size) == /*(uint64_t)*/ bp)
 	{
 		p->s.size += bp->s.size;
 		p->s.ptr = bp->s.ptr;
 	}
 	else
-		p->s.ptr = (header*) bp;
+		p->s.ptr = bp;
 
 	freep = p;
 }
 
 header *getmorememory(uint32_t units)
 {
-	char *cp;
+	int *cp;
 	header *up;
 
 	// always allocate huge block of memory like 100 MB and later use in chunks
-	cp = (void*) brk();		// 100 MB given by Kernel
-	if(cp == NULL)
-		return NULL;
+	cp = brk(units);		// 100 MB given by Kernel
+	if(cp == 0)
+		return 0;
 
 	up = (header *) cp;
 
-	up->s.size = (100 * 1024 * 1024) / sizeof(header);
+	up->s.size = (1000 * 4096) / sizeof(header);
 
 	free((void *) (up + 1));
 	return freep;
@@ -92,7 +113,7 @@ void *malloc(size_t size)
 
 	if((prevp == NULL) && (freep == (header*)1))		// dont know why NULL is not working for freep
 	{
-		base.s.ptr = (header*)&base;
+		base.s.ptr = &base;
 		freep = &base;
 		prevp = &base;
 		base.s.size = 0;
@@ -106,12 +127,12 @@ void *malloc(size_t size)
 			{
 				prevp->s.ptr = p->s.ptr;
 			}
-			else
+			/*else
 			{
 				p->s.size -= units;
 				p += p->s.size;
 				p->s.size = units;
-			}
+			}*/
 			freep = prevp;
 			return (void *) (p + 1);
 		}
@@ -125,3 +146,5 @@ void *malloc(size_t size)
 
 	return NULL;	// should not come here
 }
+
+#endif

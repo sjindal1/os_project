@@ -1,10 +1,13 @@
+
+#if 1
+
 #include <stdlib.h>
 
 void startproc();
 
 void _start(void){
   __asm__ (
-  "callq startproc\n\t"
+/*  "callq startproc\n\t"*/
   "movq (%rsp), %rdi \n\t"
   "movq %rsp,   %r8 \n\t"
   "addq $0x8,   %r8 \n\t"
@@ -20,3 +23,5 @@ void _start(void){
   "movq %rax,   %rdi \n\t"
   "call exit         \n\t");
 }
+
+#endif

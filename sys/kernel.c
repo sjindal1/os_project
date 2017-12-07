@@ -231,14 +231,25 @@ uint64_t get_pt_va_add(uint64_t v_add){
 
 uint8_t is_valid_va(uint64_t v_add, vma_type **vma){
   uint8_t flag= 1; //is not valid
-
+  uint8_t heap;
   pcb *p = &pcb_struct[current_process];
+
+  heap = p->heap_allocated;
 
   for(int i = p->numvma-1; i>=0 ;i--){ 
     if(v_add >= p->vma[i].startva && v_add <= (p->vma[i].startva + p->vma[i].size)){
-      *vma = &(pcb_struct[current_process].vma[i]);
-      flag = 0;
-      return flag;
+      if(i == heap && i != 0)
+      {
+        *vma = NULL;
+        flag = 0;
+        return flag;
+      }
+      else
+      {
+        *vma = &(pcb_struct[current_process].vma[i]);
+        flag = 0;
+        return flag;
+      }
     }
   }
   if(flag == 1){

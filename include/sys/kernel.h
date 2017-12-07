@@ -5,7 +5,8 @@
 #define MAX_FDEFS 16
 
 #define USER_HEAP_START 0x1000000
-#define USER_HEAP_SIZE  0x6400000
+//#define USER_HEAP_SIZE  0x64000
+#define USER_HEAP_SIZE  0x3E8000
 
 void main_task();
 
