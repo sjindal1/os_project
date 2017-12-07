@@ -173,7 +173,66 @@ void init_tarfs(){
 }
 
 
-void _tarfsreaddir(uint8_t *path){
+//char previous_name[256] = {"348(*abc"};
+
+void _tarfsreaddir(diropen *dirpath, uint8_t **ptr){
+  uint8_t *path = (uint8_t*) dirpath->fname;
+  uint16_t i;
+  uint16_t len = strlen(path);
+  uint8_t buf[100];
+  int k =0;
+  *ptr = NULL;
+
+  i = dirpath->index;
+  for(; i < tarfsfilecount; i++)
+  {
+    //kprintf(" skdf %s\n", ftarinfo[i].fname);
+    char * p = (char*) &ftarinfo[i].fname[0];
+    //kprintf(" %s p \n = ", p);
+    k = 0;
+    if(strcmp(path, (uint8_t *)"/") == 0){
+      while(p[k] != '\0'){
+        if(p[k] == '/') break;
+        buf[k] = p[k];
+        k++;
+      }
+
+      buf[k] = '\0';
+      //kprintf(" buf = %s \n", buf);
+      if(strcmp(buf, dirpath->previous_name) != 0)
+      {
+        strcpy(dirpath->previous_name, buf);
+        //return buf;
+        *ptr = buf;
+        dirpath->index = i;
+        break;
+      }
+    }else if(strStartsWith(ftarinfo[i].fname, path) == 0 && strcmp(ftarinfo[i].fname, path) != 0){
+      p = (char*) &ftarinfo[i].fname[len];
+
+      while(p[k] != '\0'){
+        if(p[k] == '/') break;
+        buf[k] = p[k];
+        k++;
+      }
+
+      buf[k] = '\0';
+      //kprintf(" buf = %s \n", buf);
+      if(strcmp(buf, dirpath->previous_name) != 0)
+      {
+        strcpy(dirpath->previous_name, buf);
+        //return buf;
+        *ptr = buf;
+        dirpath->index = i;
+        break;
+      }
+    //_vfswrite(1, (uint8_t*) "   ", 3);
+    }
+  }
+  //_vfswrite(1, (uint8_t*) "\n", 1);
+
+  return;
+#if 0
   uint16_t i;
   uint16_t len = strlen(path);
   uint8_t buf[100];
@@ -222,5 +281,6 @@ void _tarfsreaddir(uint8_t *path){
     }
   }
   _vfswrite(1, (uint8_t*) "\n", 1);
+#endif
 }
 

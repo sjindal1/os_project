@@ -18,6 +18,6 @@ void _vfsseek(int16_t fd, uint32_t offset);
 
 int8_t _vfsexists(uint8_t *filename);
 
-void _vfsreaddir(uint8_t *path);
+void _vfsreaddir(diropen *path, uint8_t **);
 
 #endif

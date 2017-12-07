@@ -395,6 +395,11 @@ int executescript(int no_of_arguments)
       execute_commands(arguments);
     }
   }
+  else
+  {
+    close(fd);
+    return 0;
+  }
 
   close(fd);
   return 1;

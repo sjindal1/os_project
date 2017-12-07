@@ -6,6 +6,8 @@
 
 int main(int argc, char *argv[], char *envp[]) {
   char *fileptr = NULL;
+  DIR* dirfile;
+  struct dirent* dirfilename;
 
   char filename[256];
   int i = 0;
@@ -37,17 +39,35 @@ int main(int argc, char *argv[], char *envp[]) {
     fileptr[lastchar] = '/';
     fileptr[++lastchar] = '\0';
   }
-  
+
+  dirfile = opendir(fileptr);
+  if(dirfile == 0)
+  {
+    printf("no such path exists\n");
+    return 1;
+  }
+
+  dirfilename = readdir(dirfile);
+  while(dirfilename != 0)
+  {
+    printf("%s   ", dirfilename->d_name);
+    dirfilename = readdir(dirfile);
+  }
+  printf("\n");
+
+  closedir(dirfile);
+#if 0
   int result = opendir(fileptr);
   if(result == 1){
     readdir(fileptr);
   }else{
     printf("no such path exists\n");
   }
+#endif
 
   //while(1);
 
-  return result; 
+  return 0; 
 }
 
 

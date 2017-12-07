@@ -64,4 +64,12 @@ void create_kernel_thread(uint64_t* func_ptr);
 
 void create_pcb_stack(uint64_t *user_cr3,uint64_t va_func);
 
+typedef struct diropen diropen;
+struct diropen
+{
+  uint8_t *fname;
+  uint8_t *previous_name;
+  uint32_t index;
+};
+
 #endif

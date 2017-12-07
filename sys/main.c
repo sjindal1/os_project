@@ -1,12 +1,13 @@
 #include <sys/defs.h>
 #include <sys/gdt.h>
+#include <sys/kernel.h>
 #include <sys/kprintf.h>
 #include <sys/tarfs.h>
 #include <sys/ahci.h>
 #include <sys/pic.h>
 #include <sys/idt.h>
 #include <sys/paging.h>
-#include <sys/kernel.h>
+
 
 #define INITIAL_STACK_SIZE 4096
 

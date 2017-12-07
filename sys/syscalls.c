@@ -164,6 +164,47 @@ uint64_t _sysopen(syscall_params *params){
 }
 
 uint64_t _sysopendir(syscall_params *params){
+	uint8_t *filename = (uint8_t *)params->p1;
+	uint8_t *filepath;
+	uint8_t filebuf[256];
+	uint32_t i;
+
+	if(strcmp(filename, (uint8_t *)"/") == 0){
+		filepath = filename;
+	}else{
+		if(strStartsWith(filename, (uint8_t*) "/") == 0){ //absolute path
+			filepath = filename;
+		}else{                           //relative path
+			uint8_t *env_var = &pcb_struct[current_process].cwd[0];
+			strConcat(env_var, filename, filebuf);
+			filepath = filebuf;
+	    } 
+
+	    filepath++;		// to remove "/"
+	    if(_vfsexists(filepath) == 0)
+	    	return 0;
+	}
+    
+  	uint64_t *p_add = get_free_page();
+  	uint64_t va_add = (pcb_struct[current_process]._start_addr & 0xfffffffffffff000) - 4096;
+    create_pf_pt_entry(p_add, (uint64_t)va_add);
+    uint8_t *namebuf = (uint8_t*) va_add + 24;
+
+    diropen* dir = (diropen*)va_add;
+
+    for(i = 0 ; i < strlen(filepath);i++){
+		namebuf[i] = filepath[i];
+	}
+	namebuf[i] = '\0';
+
+	dir->fname = namebuf;
+	namebuf[1024] = '\0';
+	dir->previous_name = namebuf + 1024;
+	dir->index = 0;
+
+	return (uint64_t) dir;
+
+#if 0
   uint8_t *filename = (uint8_t *)params->p1;
   if(strcmp(filename, (uint8_t *)"/") == 0){ //root is special case
     return 1;
@@ -171,6 +212,7 @@ uint64_t _sysopendir(syscall_params *params){
     filename++; // tarfs starts from bin and not /bin so removing one character
     return _vfsexists(filename);
   }
+ #endif
 }
 
 uint64_t _sysclosedir(syscall_params *params){  
@@ -183,12 +225,32 @@ uint64_t _sysclear(syscall_params *params){
 }
 
 uint64_t _sysreaddir(syscall_params *params){
+	diropen *dir = (diropen*) params->p1;
+	uint8_t *filename;
+	int i;
+
+	_vfsreaddir(dir, &filename);
+
+	if(filename == NULL)
+		return 0;
+
+	uint8_t *buf = (uint8_t*)dir + 2048;
+
+	for(i = 0 ; i < strlen(filename);i++){
+		buf[i] = filename[i];
+	}
+	buf[i] = '\0';
+
+	return (uint64_t) buf;
+
+#if 0
   uint8_t *path = (uint8_t *)params->p1;
   if(strcmp(path, (uint8_t *)"/") != 0){
     path++;
   }
   _vfsreaddir(path);
   return 0;
+#endif
 }
 
 uint64_t _sys_access(syscall_params *params){

@@ -47,6 +47,6 @@ uint64_t copy_argv(uint64_t user_arg_va, uint64_t *user_st_va, uint8_t **argv_pr
 
 uint64_t copy_environ(uint64_t user_en_va, uint64_t *user_st_va, uint8_t ** envp_proc);
 
-void _tarfsreaddir(uint8_t *path);
+void _tarfsreaddir(diropen *path, uint8_t **);
 
 #endif
