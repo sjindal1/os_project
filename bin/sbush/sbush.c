@@ -416,19 +416,21 @@ int main(int argc, char *argv[], char *envp[]) {
 	{
 		display_prompt();
 		err = read(0,input_buf,256);
-		input_buf[err] = '\0';
-		int no_of_arguments = strspt(input_buf, input_args, ' ');
-	  for(int arg_no = 0; arg_no < no_of_arguments; arg_no++){
-      args[arg_no] = input_args[arg_no];
-	    //printf("%s\n", args[arg_no]);
-	  }
-    args[no_of_arguments] = NULL;
+    if(err > 0){
+  		input_buf[err] = '\0';
+  		int no_of_arguments = strspt(input_buf, input_args, ' ');
+  	  for(int arg_no = 0; arg_no < no_of_arguments; arg_no++){
+        args[arg_no] = input_args[arg_no];
+  	    //printf("%s\n", args[arg_no]);
+  	  }
+      args[no_of_arguments] = NULL;
 
-    err = executescript(no_of_arguments);
-    if(err == 0)
-      execute_commands(no_of_arguments);
-		//I have to call read now
-		//while(1);
+      err = executescript(no_of_arguments);
+      if(err == 0)
+        execute_commands(no_of_arguments);
+  		//I have to call read now
+  		//while(1);
+    }
 	}
 
 	return 0;
